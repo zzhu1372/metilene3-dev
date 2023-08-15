@@ -483,7 +483,12 @@ kstest2d(double *x0, double *x1, int m, double *y0, double *y1, int n,
  */
 
 void kstest(segment_t *seg , int a, int b, char mindiff, char mincpgs, char test, 
-    double *ks, int *grpA, int noA, int *grpB, int noB, metseg_t* nfo){
+    double *ks, int **groupID, int *groupSize, metseg_t* nfo){
+
+  int *grpA = groupID[0];
+  int noA = groupSize[0];
+  int *grpB = groupID[1];
+  int noB = groupSize[1];
 
   int i,j;
   int l = b-a+1;
@@ -499,6 +504,7 @@ void kstest(segment_t *seg , int a, int b, char mindiff, char mincpgs, char test
   double dl = l;
   double p = 2;
   double faskstest[2] = {0,0};
+
 
   //mincpgs set to false by default so this condition is never fullfilled
 
@@ -579,13 +585,18 @@ void kstest(segment_t *seg , int a, int b, char mindiff, char mincpgs, char test
  * @author Frank Juehling and Steve Hoffmann 
  *   
  */
-void means(segment_t *seg , int a, int b, int *grpA, int noA, int *grpB, int noB, double *means){
+void means(segment_t *seg , int a, int b, int **groupID, int *groupSize, double *means){
 
   int i,j;
   double mean1=0;
   double mean2=0;
   double dl1=0;
   double dl2=0;
+
+  int *grpA = groupID[0];
+  int noA = groupSize[0];
+  int *grpB = groupID[1];
+  int noB = groupSize[1];
   
    for(i=a; i<=b ; i++) {
     for(j=0; j < noA; j++) {
@@ -618,60 +629,72 @@ void means(segment_t *seg , int a, int b, int *grpA, int noA, int *grpB, int noB
  */
 
 double **
-calcSingleDiffSum(segment_t *s, int *grpA, int noA, int *grpB, int noB){
+calcSingleDiffSum(segment_t *s, int **groupID, int *groupSize, int groupNumber){
 
   int i, j;
-  double **S, s1, s2;
+  double ***S, s1, s2;
+  
+  S = ALLOCMEMORY(NULL, NULL, double**, pow(2,groupNumber)-2);
 
-  S = ALLOCMEMORY(NULL, NULL, double*, s->n);
+  for (int groupCombination = 0; groupCombination < pow(2,groupNumber)-2; groupCombination++)
+  {
+    int *grpA = groupID[0];
+    int noA = groupSize[0];
+    int *grpB = groupID[groupNumber-1];
+    int noB = groupSize[groupNumber-1];
 
-  for(i=0; i < s->n; i++) {
-    S[i] = ALLOCMEMORY(NULL, NULL, double, 3);
-    memset(S[i], 0, sizeof(double)*3);
-  }
+    S[groupCombination] = ALLOCMEMORY(NULL, NULL, double*, s->n);
 
-  for(i=0; i < s->n; i++) {
-    s1 = 0;
-    for(int j=0;j<noA;j++)
-      s1+=s->value[i][grpA[j]];
-    s1/=noA;
+    for(i=0; i < s->n; i++) {
+      S[groupCombination][i] = ALLOCMEMORY(NULL, NULL, double, 3);
+      memset(S[groupCombination][i], 0, sizeof(double)*3);
+    }
 
-    s2 = 0;
-    for(j=0; j < noB; j++)
-      s2+=s->value[i][grpB[j]];
-    s2/=noB;
+    for(i=0; i < s->n; i++) {
+      s1 = 0;
+      for(int j=0;j<noA;j++)
+        s1+=s->value[i][grpA[j]];
+      s1/=noA;
 
-    if(i==0) {
+      s2 = 0;
+      for(j=0; j < noB; j++)
+        s2+=s->value[i][grpB[j]];
+      s2/=noB;
 
-      S[i][1]=s1-s2;
-      S[i][0]=fabs(S[i][1]);
-      if(s1-s2==0) {
-        S[i][2] = 0;
+      if(i==0) {
 
+        S[groupCombination][i][1]=s1-s2;
+        S[groupCombination][i][0]=fabs(S[groupCombination][i][1]);
+        if(s1-s2==0) {
+          S[groupCombination][i][2] = 0;
+
+        }
+        else{
+          if(s1-s2>0)
+            S[groupCombination][i][2] = 1;
+          else
+            S[groupCombination][i][2] = -1;
+        }
+
+      } else {
+
+        S[groupCombination][i][1]=S[groupCombination][i-1][1]+s1-s2;
+        S[groupCombination][i][0]=fabs(S[groupCombination][i][1]);
+        if(s1-s2==0)
+          S[groupCombination][i][2] = 0;
+        else{
+          if(s1-s2>0)
+            S[groupCombination][i][2] = S[groupCombination][i-1][2]+1;
+          else
+            S[groupCombination][i][2] = S[groupCombination][i-1][2]-1;
+        }                    
       }
-      else{
-        if(s1-s2>0)
-          S[i][2] = 1;
-        else
-          S[i][2] = -1;
-      }
-
-    } else {
-
-      S[i][1]=S[i-1][1]+s1-s2;
-      S[i][0]=fabs(S[i][1]);
-      if(s1-s2==0)
-        S[i][2] = 0;
-      else{
-        if(s1-s2>0)
-          S[i][2] = S[i-1][2]+1;
-        else
-          S[i][2] = S[i-1][2]-1;
-      }                    
     }
   }
+  
+  
 
-  return S;
+  return S[0];
 }
 
 /*----------------------------- calcSingleTrend ------------------------------
@@ -933,12 +956,12 @@ stackSegment_p(Segmentstack *stack)
 segment_t*
 segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double **XS, 
     int a, int b, double *KS, char first, 
-    int *grpA, int noA, int *grpB, int noB, metseg_t *nfo) {
-
+    int **groupID, int *groupSize, metseg_t *nfo) {
+// zzhu$ a,b: the start pos and end pos of the seg. ab: {start of subseg, end of subseg}. KS: the test result for the seg.
   int i, n, m;
-  int dimZ, child = 0;
+  int dimZ, child = 0; // zzhu$ child: the pointer to a child, start from the left child
   int ab[2] = {-1,0};
-  double ks1[] = {2,0,2};
+  double ks1[] = {2,0,2}; // zzhu$ {ks p, mean diff, ranksums p}
   double ks2[] = {2,0,2};
   double ks3[] = {2,0,2};
   double init[] = {2,0,2};
@@ -952,7 +975,7 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double **XS,
   while(!bl_segmentstackIsEmpty(&stack) || a != -1) { 
 
     if(a != -1 && child <= 2) { 
-      if(ab[0] == -1) {  
+      if(ab[0] == -1) {  // zzhu$ if ab is not calculated yet
 
         ab[0] = 0;
         ab[1] = 0;
@@ -981,7 +1004,7 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double **XS,
             && calcSingleTrendAbs(XS,a,ab[0]-1) > nfo->trend 
             && noValley(XS, a, ab[0]-1, nfo)) {
 
-          kstest(seg, a, ab[0]-1, 0, 1, 1, ks1, grpA, noA, grpB, noB, nfo);
+          kstest(seg, a, ab[0]-1, 0, 1, 1, ks1, groupID, groupSize, nfo);
         }
 
         //check the maximum interval interval with ks
@@ -990,7 +1013,7 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double **XS,
             && calcSingleTrendAbs(XS,ab[0],ab[1]) > nfo->trend 
             && noValley(XS, ab[0], ab[1], nfo) ) {
 
-          kstest(seg, ab[0], ab[1], 0, 1, 1, ks2, grpA, noA, grpB, noB, nfo);
+          kstest(seg, ab[0], ab[1], 0, 1, 1, ks2, groupID, groupSize, nfo);
         }
 
         //check the right side of the maximum interval with ks
@@ -999,7 +1022,7 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double **XS,
             && calcSingleTrendAbs(XS,ab[1]+1,b)> nfo->trend 
             && noValley(XS, ab[1]+1, b, nfo)) {
 
-          kstest(seg, ab[1]+1, b, 0, 1, 1, ks3, grpA, noA, grpB, noB, nfo);
+          kstest(seg, ab[1]+1, b, 0, 1, 1, ks3, groupID, groupSize, nfo);
         }
 
         for(i=0; i < dimZ; i++) {
@@ -1014,22 +1037,22 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double **XS,
 
       //if the p-value of one of the three intervals is better than the original
       //recurse down to find the best subinterval
-      if((newp<KS[0] || (newp>1 && KS[0]>1)) && (b-a >= nfo->mincpgs)) {
+      if((newp<KS[0] || (newp>1 && KS[0]>1)) && (b-a >= nfo->mincpgs)) { // zzhu$ termination criteria (1)#CpG (2)p_child>p_parent. no need for newp>1???
 
-        pushSegment_p (&stack, a, b, ab, child+1, ks1, ks2, ks3, KS, NULL);
+        pushSegment_p (&stack, a, b, ab, child+1, ks1, ks2, ks3, KS, NULL); // zzhu$ push the next child into the stack.
 
         //left interval child
         if(child == 0) {
           n = a;
           m = ab[0]-1;
-          a = -1;
+          a = -1; // zzhu$ end this child if meet termination criteria
           if(ab[0] > 0 && n <= m) {
             if(m-n >= nfo->mincpgs) { 
               a = n;
               b = m;
               memmove(KS, ks1, sizeof(double)*3);
               child = 0;
-              ab[0] = -1;
+              ab[0] = -1; // zzhu$ ab[0]==-1 means ab to be calculated.
             } else { 
               breaks = ALLOCMEMORY(NULL, breaks, segment_t, (*nbreaks)+1);
               setSegment(&breaks[(*nbreaks)], seg->chr, n, m, ks1[0], ks1[1], ks1[2]);
@@ -1108,12 +1131,14 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double **XS,
  */
 segment_t*
 segmenterSTK(segment_t *seg, segment_t *globalbreaks, int *nglobal, double **XS, 
-    int a, int b, double *KS, int *grpA, int noA, int *grpB, int noB, 
+    int a, int b, double *KS, int **groupID, int *groupSize, 
     metseg_t *nfo) {
+  
+  // zzhu$ a: the start pos of the region, b is the end pos.
 
   int nbreaks=0, i, n, m; //, *s, *t;
   double trend;
-  segment_t *breaks=NULL, *max;
+  segment_t *breaks=NULL, *max; // zzhu$ breaks: pre-segments. max: the break with most significant p value.
 
   Segmentstack stack; 
   stackSegment_p(&stack);
@@ -1121,22 +1146,22 @@ segmenterSTK(segment_t *seg, segment_t *globalbreaks, int *nglobal, double **XS,
   //while(!bl_vstackIsEmpty(stack) || a != -1) {
   while(!bl_segmentstackIsEmpty(&stack) || a != -1) {
 
-    if(a != -1) { 
+    if(a != -1) { // zzhu$ initial a will be 0, from the function segmentation 
       //push current interval node
       nbreaks = 0;
       breaks = NULL;
       breaks = segment_pSTKopt(seg, breaks, &nbreaks, XS, a, b, KS, 0, 
-          grpA, noA, grpB, noB, nfo);
+          groupID, groupSize, nfo);
 
-      max = &breaks[0];
-
+      max = &breaks[0]; // zzhu$ max: the break with most significant p value.
+      // zzhu$ the most significant break as DMR.
       for(i=0; i < nbreaks; i++) { 
         if(max->prob > breaks[i].prob) { 
           max = &breaks[i];
         }
       }
 
-      pushSegment_p (&stack, a, b, NULL, 0, NULL, NULL, NULL, NULL, max);
+      pushSegment_p (&stack, a, b, NULL, 0, NULL, NULL, NULL, NULL, max); 
 
       //set next
       n = a;
@@ -1148,14 +1173,14 @@ segmenterSTK(segment_t *seg, segment_t *globalbreaks, int *nglobal, double **XS,
         double ks[] = {2,0,2};
 
         if(m-n+1 >= nfo->mincpgs && trend > nfo->trend && noValley(XS, n, m, nfo)) { 
-          kstest(seg, n, m, 0, 1, 1, ks, grpA, noA, grpB, noB, nfo);
+          kstest(seg, n, m, 0, 1, 1, ks, groupID, groupSize, nfo);
         }
 
         a = n;
         b = m;
         KS = ks;
       } else {
-        a = -1;
+        a = -1; // zzhu$ a==-1 means there is no left region of max, continue to right segment.
       }
 
       FREEMEMORY(NULL, breaks);
@@ -1167,7 +1192,7 @@ segmenterSTK(segment_t *seg, segment_t *globalbreaks, int *nglobal, double **XS,
 
       //here the segment is registered!
       globalbreaks = ALLOCMEMORY(NULL, globalbreaks, segment_t, (*nglobal)+1);
-      memmove(&globalbreaks[(*nglobal)], max, sizeof(segment_t)); 
+      memmove(&globalbreaks[(*nglobal)], max, sizeof(segment_t)); // zzhu$ globalbreaks: the DMR set
       (*nglobal)+=1;
 
       n = max->stop+1;
@@ -1176,14 +1201,14 @@ segmenterSTK(segment_t *seg, segment_t *globalbreaks, int *nglobal, double **XS,
         trend = calcSingleTrendAbs(XS,n,m);
         double ks[] = {2,0,2};
         if(m-n+1 >= nfo->mincpgs && trend > nfo->trend && noValley(XS, n, m, nfo)) { 
-          kstest(seg, n, m, 0, 1, 1, ks, grpA, noA, grpB, noB, nfo);
+          kstest(seg, n, m, 0, 1, 1, ks, groupID, groupSize, nfo);
         }
 
         a = n;
         b = m;
         KS = ks;
       } else {
-        a = -1;
+        a = -1; 
       }
 
       FREEMEMORY(NULL, max);
@@ -1202,7 +1227,7 @@ segmenterSTK(segment_t *seg, segment_t *globalbreaks, int *nglobal, double **XS,
  */
 void
 output(segment_t *seg, segment_t *breaks, int nglobal, double **XS, 
-    int *grpA, int noA, int *grpB, int noB, metseg_t *nfo) {
+    int **groupID, int *groupSize, metseg_t *nfo) {
   
     
   if(nfo->outputList->i >= nfo->outputList->n) {
@@ -1232,7 +1257,7 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double **XS,
         tmp->test=b->test;
         
         double me[] = {-2,-2};
-        means(seg, tmp->start,tmp->stop, grpA, noA, grpB, noB, me);
+        means(seg, tmp->start,tmp->stop, groupID, groupSize, me);
         
         tmp->methA=me[0];
         tmp->methB=me[1];
@@ -1261,7 +1286,7 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double **XS,
             && noValley(XS, tmp->start, tmp->stop, nfo)) {
 
           kstest(seg, tmp->start,tmp->stop, 0, 1, 1, ks, 
-              grpA, noA, grpB, noB, nfo);
+              groupID, groupSize, nfo);
         }
 
         if(ks[0]<2) {
@@ -1276,7 +1301,7 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double **XS,
             nfo->outputList->segment_out[nfo->outputList->i].length = (tmp->stop-tmp->start+1);
             
             double me[] = {-2,-2};
-            means(seg,tmp->start,tmp->stop, grpA, noA, grpB, noB, me);
+            means(seg,tmp->start,tmp->stop, groupID, groupSize, me);
             nfo->outputList->segment_out[nfo->outputList->i].methA = me[0];
             nfo->outputList->segment_out[nfo->outputList->i].methB = me[1];
             
@@ -1302,7 +1327,7 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double **XS,
         nfo->outputList->segment_out[nfo->outputList->i].length = (b->stop-b->start+1);
         
         double me[] = {-2,-2};
-        means(seg, b->start,b->stop, grpA, noA, grpB, noB, me);
+        means(seg, b->start,b->stop, groupID, groupSize, me);
         nfo->outputList->segment_out[nfo->outputList->i].methA = me[0];
         nfo->outputList->segment_out[nfo->outputList->i].methB = me[1];
            
@@ -1323,7 +1348,7 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double **XS,
 
     if(tmp->stop-tmp->start + 1 >= nfo->mincpgs && trend > nfo->trend 
         && noValley(XS, tmp->start, tmp->stop, nfo)) {
-      kstest(seg,tmp->start,tmp->stop,0, 1, 1, ks, grpA, noA, grpB, noB, nfo);
+      kstest(seg,tmp->start,tmp->stop,0, 1, 1, ks, groupID, groupSize, nfo);
     }
 
     if(ks[0]<2) {
@@ -1338,7 +1363,7 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double **XS,
         nfo->outputList->segment_out[nfo->outputList->i].length = (tmp->stop-tmp->start+1);
         
         double me[] = {-2,-2};
-        means(seg, tmp->start,tmp->stop, grpA, noA, grpB, noB, me);
+        means(seg, tmp->start,tmp->stop, groupID, groupSize, me);
         nfo->outputList->segment_out[nfo->outputList->i].methA = me[0];
         nfo->outputList->segment_out[nfo->outputList->i].methB = me[1];
         
@@ -1371,39 +1396,39 @@ static pthread_mutex_t cnt;
 
 int 
 segmentation(char **chr, int *pos, double **value, int n, 
-    int *grpA, int noA, int *grpB, int noB, metseg_t *nfo) {
+    int **groupID, int *groupSize, metseg_t *nfo) {
 
   double **S, trend;
   double ks[] = {2,0,2};
   char novalley;
-  segment_t *seg, *global=NULL;
+  segment_t *seg, *global=NULL; // zzhu$ seg: containing all met. values in the two groups. global: the DMRs from segmenterSTK.
   int i, nglobal = 0;
 
   seg = ALLOCMEMORY(NULL, NULL, segment_t, 1);
 
   initSegment(seg);
-  seg->n = n;
+  seg->n = n; // zzhu$ number of CpGs in the region
   seg->chr = chr[0];
   seg->pos = pos;
   seg->value = value;
 
-  S = calcSingleDiffSum(seg, grpA, noA, grpB, noB);
+  S = calcSingleDiffSum(seg, groupID, groupSize, nfo->groups);
   trend = calcSingleTrendAbs(S, 0, n-1);
   novalley = noValley(S, 0, n-1, nfo);
 
   if(seg->n-1 >= nfo->mincpgs && trend > nfo->trend && novalley) {
-    kstest(seg , 0, n-1, 0, 1, 1, ks, grpA, noA, grpB, noB, nfo);
+    kstest(seg , 0, n-1, 0, 1, 1, ks, groupID, groupSize, nfo);
   }
 
   global = segmenterSTK(seg, global, &nglobal, S, 0, n-1, ks, 
-      grpA, noA, grpB, noB, nfo);
+      groupID, groupSize, nfo);
 
   //set lock if necessary 
   if(nfo->threads >1) { 
     pthread_mutex_lock(&out);
   }
   //output here   
-  output(seg, global, nglobal, S, grpA, noA, grpB, noB, nfo);
+  output(seg, global, nglobal, S, groupID, groupSize, nfo);
  
   //unlock if necessary
   if(nfo->threads > 1) {
@@ -1438,7 +1463,7 @@ segworker (void *args)
   metseg_t *t;
   t = (metseg_t*) args;
    
-  segmentation(t->chr, t->pos, t->value, t->n, t->grpA, t->noA, t->grpB, t->noB, t);
+  segmentation(t->chr, t->pos, t->value, t->n, t->groupID, t->groupSize, t);
   
   //cleanup own data
   for(i=0; i < t->n; i++) {
@@ -1467,14 +1492,14 @@ segworker (void *args)
  */
 
 void 
-regionTest(segment_t *seg, int *grpA, int noA, int *grpB, int noB, metseg_t *nfo) {
+regionTest(segment_t *seg, int **groupID, int *groupSize, metseg_t *nfo) {
     double ks[] = {2,0,2};
     if(seg->n>0) {
-        kstest(seg , 0, seg->n-1, 0, 0, 1, ks, grpA, noA, grpB, noB, nfo);
+        kstest(seg , 0, seg->n-1, 0, 0, 1, ks, groupID, groupSize, nfo);
        
     }
     double me[] = {-2,-2};
-    means(seg, 0, seg->n-1,grpA, noA, grpB, noB,me);
+    means(seg, 0, seg->n-1,groupID, groupSize,me);
     
 //    void kstest(segment_t *seg , int a, int b, char mindiff, char mincpgs, char test, 
 //  (segment_t *seg , int a, int b, char mindiff, char mincpgs, char test, 
@@ -1612,7 +1637,7 @@ segworker_region (void *args)
 {
   metseg_t *t;
   t = (metseg_t*) args;
-  regionTest(t->seg, t->grpA, t->noA, t->grpB, t->noB, t);
+  regionTest(t->seg, t->groupID, t->groupSize, t);
           
   pthread_mutex_lock(&cnt);
   schedule[t->threadno] = 0;
@@ -1662,116 +1687,116 @@ checkSetNAN(stringset_t **csv, double *values){
         
 
    
-/*-------------------------------- fillNAN ---------------------------------
- *    
- * @brief for replacing NaNs with betaDist
- * @author Frank Juehling and Steve Hoffmann 
- *   
- */
+// /*-------------------------------- fillNAN ---------------------------------
+//  *    
+//  * @brief for replacing NaNs with betaDist
+//  * @author Frank Juehling and Steve Hoffmann 
+//  *   
+//  */
  
 int 
-fillNAN(double *values, int *grpA, int noA, int *grpB, int noB, metseg_t *nfo) {
-  //    fprintf(stderr,"#Ueberhaupt schaetzen\n");
-    int na=0;
-    int nb=0;
-    double *groupA = ALLOCMEMORY(NULL, NULL, double, noA);
-    double *groupB = ALLOCMEMORY(NULL, NULL, double, noB);
-    double varA;
-    double varB;
-    double meanA = 0.0;
-    double meanB = 0.0;
-    int j;
+fillNAN(double *values, int **groupID, int *groupSize, metseg_t *nfo) {
+//   //    fprintf(stderr,"#Ueberhaupt schaetzen\n");
+//     int na=0;
+//     int nb=0;
+//     double *groupA = ALLOCMEMORY(NULL, NULL, double, noA);
+//     double *groupB = ALLOCMEMORY(NULL, NULL, double, noB);
+//     double varA;
+//     double varB;
+//     double meanA = 0.0;
+//     double meanB = 0.0;
+//     int j;
 
-//    fprintf(stdout,"\ngroupA\t");
-    j=0;
-    for(int i=0; i<noA; i++) 
-        if(values[grpA[i]+2] == values[grpA[i]+2]) {
-          groupA[j] = values[grpA[i]+2];
- //         fprintf(stdout,"%f\t",groupA[j]);
-          na+=1;
-          meanA+=groupA[j];
-          j++;
-    }
- //   fprintf(stdout,"\ngroupB\t");
+// //    fprintf(stdout,"\ngroupA\t");
+//     j=0;
+//     for(int i=0; i<noA; i++) 
+//         if(values[grpA[i]+2] == values[grpA[i]+2]) {
+//           groupA[j] = values[grpA[i]+2];
+//  //         fprintf(stdout,"%f\t",groupA[j]);
+//           na+=1;
+//           meanA+=groupA[j];
+//           j++;
+//     }
+//  //   fprintf(stdout,"\ngroupB\t");
    
-    j=0;
-    for(int i=0; i<noB; i++) 
-        if(values[grpB[i]+2] == values[grpB[i]+2]) {
-          groupB[j] = values[grpB[i]+2];
-//          fprintf(stdout,"%f\t",groupB[j]);
-          nb+=1;
-          meanB+=groupB[j];
-          j++;
-    }
-//    fprintf(stdout,"\n");
+//     j=0;
+//     for(int i=0; i<noB; i++) 
+//         if(values[grpB[i]+2] == values[grpB[i]+2]) {
+//           groupB[j] = values[grpB[i]+2];
+// //          fprintf(stdout,"%f\t",groupB[j]);
+//           nb+=1;
+//           meanB+=groupB[j];
+//           j++;
+//     }
+// //    fprintf(stdout,"\n");
    
-    if(na<1 || nb<1 || na<nfo->minNoA || nb<nfo->minNoB) {
-        FREEMEMORY(NULL, groupA);
-        FREEMEMORY(NULL, groupB);
-	//        fprintf(stderr,"#REMOVING POSITION CUTOFF\n");
-        return 1;
-    }
-    //    fprintf(stderr,"#NOT REMOVING POSITION CUTOFF\n");
-    meanA/=(double)na;
-    meanB/=(double)nb;
-    if(na == 1) {
-        varA=0.000001;
-    }
-    else {
-        varA = var(groupA,na);
-    }
+//     if(na<1 || nb<1 || na<nfo->minNoA || nb<nfo->minNoB) {
+//         FREEMEMORY(NULL, groupA);
+//         FREEMEMORY(NULL, groupB);
+// 	//        fprintf(stderr,"#REMOVING POSITION CUTOFF\n");
+//         return 1;
+//     }
+//     //    fprintf(stderr,"#NOT REMOVING POSITION CUTOFF\n");
+//     meanA/=(double)na;
+//     meanB/=(double)nb;
+//     if(na == 1) {
+//         varA=0.000001;
+//     }
+//     else {
+//         varA = var(groupA,na);
+//     }
         
-    if(nb == 1) {
-        varB=0.000001;
-    }
-    else {
-        varB = var(groupB,nb);
-    }
- //   fprintf(stderr,"#meanA: %f\tmeanB: %f\tvarA: %f\tvarB: %f\n",meanA,meanB,varA,varB);
+//     if(nb == 1) {
+//         varB=0.000001;
+//     }
+//     else {
+//         varB = var(groupB,nb);
+//     }
+//  //   fprintf(stderr,"#meanA: %f\tmeanB: %f\tvarA: %f\tvarB: %f\n",meanA,meanB,varA,varB);
     
     
-    if(meanA < 0.000001)
-        meanA = 0.000001;
-    if(meanB < 0.000001)
-        meanB = 0.000001;
+//     if(meanA < 0.000001)
+//         meanA = 0.000001;
+//     if(meanB < 0.000001)
+//         meanB = 0.000001;
    
- //   fprintf(stdout,"#new As:\n");
-    for(int i=0; i<noA; i++) {
-      if(isnan(values[grpA[i]+2])) {
-          values[grpA[i]+2] = rbeta_mv(meanA, varA);
-          while(isnan(values[grpA[i]+2])) {
-//            values[grpA[i]+2] = meanA;
-            values[grpA[i]+2] = rbeta_mv(meanA, varA);
-	    //            fprintf(stderr,"#betaAnot %d\n",i);
-          }
-          //else {
-            //  fprintf(stdout,"#betaA %d\n",i);
-       //   }
-        }
-//        fprintf(stdout,"%f\t",values[grpA[i]+2]);
-    }
-  //  fprintf(stdout,"#new Bs:\n");
+//  //   fprintf(stdout,"#new As:\n");
+//     for(int i=0; i<noA; i++) {
+//       if(isnan(values[grpA[i]+2])) {
+//           values[grpA[i]+2] = rbeta_mv(meanA, varA);
+//           while(isnan(values[grpA[i]+2])) {
+// //            values[grpA[i]+2] = meanA;
+//             values[grpA[i]+2] = rbeta_mv(meanA, varA);
+// 	    //            fprintf(stderr,"#betaAnot %d\n",i);
+//           }
+//           //else {
+//             //  fprintf(stdout,"#betaA %d\n",i);
+//        //   }
+//         }
+// //        fprintf(stdout,"%f\t",values[grpA[i]+2]);
+//     }
+//   //  fprintf(stdout,"#new Bs:\n");
     
-    for(int i=0; i<noB; i++) {
-      if(isnan(values[grpB[i]+2])) {
-          values[grpB[i]+2] = rbeta_mv(meanB, varB);
-          while(isnan(values[grpB[i]+2])) {
-//            values[grpB[i]+2] = meanB;
-            values[grpB[i]+2] = rbeta_mv(meanB, varB);
-//	      fprintf(stderr,"#betaBnot %d\n",i);
-          }
-         // else {
-        //      fprintf(stdout,"#betaB %d\n",i);
-        //  }
-        }
-//        fprintf(stdout,"%f\t",values[grpB[i]+2]);
-    }
-//    fprintf(stdout,"\n");
+//     for(int i=0; i<noB; i++) {
+//       if(isnan(values[grpB[i]+2])) {
+//           values[grpB[i]+2] = rbeta_mv(meanB, varB);
+//           while(isnan(values[grpB[i]+2])) {
+// //            values[grpB[i]+2] = meanB;
+//             values[grpB[i]+2] = rbeta_mv(meanB, varB);
+// //	      fprintf(stderr,"#betaBnot %d\n",i);
+//           }
+//          // else {
+//         //      fprintf(stdout,"#betaB %d\n",i);
+//         //  }
+//         }
+// //        fprintf(stdout,"%f\t",values[grpB[i]+2]);
+//     }
+// //    fprintf(stdout,"\n");
 
-//   fprintf(stdout,"#A:\t%f / %f\t%f / %f\n",meanA,varA,meanB,varB);
+// //   fprintf(stdout,"#A:\t%f / %f\t%f / %f\n",meanA,varA,meanB,varB);
     
-    FREEMEMORY(NULL, groupA);
-    FREEMEMORY(NULL, groupB);
+//     FREEMEMORY(NULL, groupA);
+//     FREEMEMORY(NULL, groupB);
     return 0;
     
  //   double
@@ -1805,6 +1830,7 @@ initProgramParams (metseg_t *nfo)
   nfo->mtc=1;
   nfo->nameA = "g1";
   nfo->nameB = "g2";
+  nfo->groups = 2; // newcodes
   nfo->trend = 0.6;
   nfo->minNoA = -1;
   nfo->minNoB = -1;
@@ -1817,26 +1843,27 @@ initProgramParams (metseg_t *nfo)
   return ;
 }
 
-/*---------------------------- initProgramParams2 -----------------------------
- *    
- * @brief initialize program parameters that depend on group sizes
- * @author Frank Juehling and Steve Hoffmann 
- *   
- */
+// /*---------------------------- initProgramParams2 -----------------------------
+//  *    
+//  * @brief initialize program parameters that depend on group sizes
+//  * @author Frank Juehling and Steve Hoffmann 
+//  *   
+//  */
 
-void
-initProgramParams2 (metseg_t *nfo, int noA, int noB)
-{
-  if(nfo->minNoA<0) {
-        nfo->minNoA = ceil((double)noA * nfo->minFactor);
-  }
+// void
+// initProgramParams2 (metseg_t *nfo, int noA, int noB)
+// {
+//   if(nfo->minNoA<0) {
+//         nfo->minNoA = ceil((double)noA * nfo->minFactor);
+//   }
   
-  if(nfo->minNoB<0) {
-        nfo->minNoB = ceil((double)noB * nfo->minFactor);
-  }
+//   if(nfo->minNoB<0) {
+//         nfo->minNoB = ceil((double)noB * nfo->minFactor);
+//   }
   
-  return ;
-}
+//   return ;
+// }
+
 
 /*----------------------------------- main -----------------------------------
  *    
@@ -1852,9 +1879,9 @@ int main(int argc, char** argv) {
   manopt_arg *args;
   manopt_intconstraint modeconstraint;
   manopt_intconstraint mtcconstraint;
-  metseg_t nfo; 
+  metseg_t nfo; // zzhu$ nfo(metseg_t): parameters for the whole process and input data.
   metseg_t *th_nfo;
-  stringset_t **csv, **bedcsv;
+  stringset_t **csv, **bedcsv; // zzhu$ input table
   fileiterator_t *fi, *bedfi;
   unsigned int i, j, k, ln, bedln;
   pthread_t *threads = NULL;
@@ -1921,63 +1948,111 @@ int main(int argc, char** argv) {
   manopt(&optset, REQDBLOPT, 0, 'v', "valley", 
       "valley filter (0.0 - 1.0)", "<n>", NULL, &nfo.valley);
 
+  manopt(&optset, REQUINTOPT, 0, 'n', "groups", 
+      "number of groups", "<n>", NULL, &nfo.groups);
+
+
   args = manopt_getopts(&optset, argc, argv);
   if(args->noofvalues == 1) {
     manopt_help(&optset, "no source file provided.\n");
   }
+
 
   srand ((unsigned) nfo.randomseed);
 
 
   fi = initFileIterator(NULL, args->values[1]);
 
-  /* check if groups are prefixes from one another */
-  if (strncmp(nfo.nameA, nfo.nameB, strlen(nfo.nameA)) == 0 ||
-      strncmp(nfo.nameB, nfo.nameA, strlen(nfo.nameB)) == 0) {
-    fprintf(stderr, "Error: name of group A (%s) must not be a prefix of name of group B (%s) "
-            "and vice versa. Exit forced.\n", nfo.nameA, nfo.nameB);
-    exit(-1);
-  }
+  // newcodes
+  // /* check if groups are prefixes from one another */
+  // if (strncmp(nfo.nameA, nfo.nameB, strlen(nfo.nameA)) == 0 ||
+  //     strncmp(nfo.nameB, nfo.nameA, strlen(nfo.nameB)) == 0) {
+  //   fprintf(stderr, "Error: name of group A (%s) must not be a prefix of name of group B (%s) "
+  //           "and vice versa. Exit forced.\n", nfo.nameA, nfo.nameB);
+  //   exit(-1);
+  // }
 
   /* read header line with ids and assign to groups (prefix matches only) */
   ln = readcsvlines(NULL, fi, '\t', 1, &csv);
+
   for(k=2; k < csv[0]->noofstrings; k++) {
-    if(strncmp(nfo.nameA, csv[0]->strings[k].str, strlen(nfo.nameA)) == 0) {
-      grpA = ALLOCMEMORY(NULL, grpA, int, noA+1);
-      grpA[noA] = k-2;
-      noA++;
-    } else 
-      if (strncmp(nfo.nameB, csv[0]->strings[k].str, strlen(nfo.nameB)) == 0) {
-        grpB = ALLOCMEMORY(NULL, grpB, int, noB+1);
-        grpB[noB] = k-2;
-        noB++;
-      }
+    char idstr[]="toBeReplaced";
+    strcpy(idstr, csv[0]->strings[k].str);
+    char *token = strtok(idstr, "_");
+    int i = atoi(token);
+    if (nfo.groups<(i+1))
+    {
+      nfo.groups=i+1;
+    }
   }
+  int combinationNumber = pow(2,nfo.groups)-2;
+  int *groupID[combinationNumber];
+  int groupSize[combinationNumber];
+  for (i = 0; i < nfo.groups; i++)
+  {
+    groupID[i] = NULL;
+    groupSize[i] = 0;
+  }
+
+  for(k=2; k < csv[0]->noofstrings; k++) {
+    char idstr[]="toBeReplaced";
+    strcpy(idstr, csv[0]->strings[k].str);
+    char *token = strtok(idstr, "_");
+    int i = atoi(token);
+    groupID[i] = ALLOCMEMORY(NULL, groupID[i], int, groupSize[i]+1);
+    groupID[i][groupSize[i]] = k-2;
+    groupSize[i]++;
+  }
+  
+  for (i = 0; i < nfo.groups; i++)
+  {
+    fprintf(stderr, "Group: %d; Size: %d. The following ids belong to this group:\n", i, groupSize[i]);
+    for (j = 0; j < groupSize[i]; j++)
+    {
+      fprintf(stderr, "%u: column: %d, name:%s\n", j, groupID[i][j], 
+        csv[0]->strings[groupID[i][j]+2].str);
+    }
+  }
+
+  // for(k=2; k < csv[0]->noofstrings; k++) {
+  //   if(strncmp(nfo.nameA, csv[0]->strings[k].str, strlen(nfo.nameA)) == 0) {
+  //     grpA = ALLOCMEMORY(NULL, grpA, int, noA+1);
+  //     grpA[noA] = k-2;
+  //     noA++;
+  //   } else 
+  //     if (strncmp(nfo.nameB, csv[0]->strings[k].str, strlen(nfo.nameB)) == 0) {
+  //       grpB = ALLOCMEMORY(NULL, grpB, int, noB+1);
+  //       grpB[noB] = k-2;
+  //       noB++;
+  //     }
+  // }
   /* check if any group is empty */
-  if (noA == 0) {
-    fprintf(stderr, "Error: no ids were found for which a prefix matches the name of group A (%s). Exit forced.\n",
-            nfo.nameA);
-    exit(-1);
-  }
-  if (noB == 0) {
-    fprintf(stderr, "Error: no ids were found for which a prefix matches the name of group B (%s). Exit forced.\n",
-            nfo.nameB);
-    exit(-1);
-  }
-  initProgramParams2(&nfo, noA, noB);
+  // if (noA == 0) {
+  //   fprintf(stderr, "Error: no ids were found for which a prefix matches the name of group A (%s). Exit forced.\n",
+  //           nfo.nameA);
+  //   exit(-1);
+  // }
+  // if (noB == 0) {
+  //   fprintf(stderr, "Error: no ids were found for which a prefix matches the name of group B (%s). Exit forced.\n",
+  //           nfo.nameB);
+  //   exit(-1);
+  // }
+  // initProgramParams2(&nfo, noA, noB);
 
   /* write info for group assignment */
-  fprintf(stderr, "the following ids belong to group A (name=%s, n=%d):\n", nfo.nameA, noA);
-  for(i=0; i < noA; i++) {
-    fprintf(stderr, "%u: column: %d, name:%s\n", i, grpA[i], 
-        csv[0]->strings[grpA[i]+2].str);
-  }
+  // fprintf(stderr, "the following ids belong to group A (name=%s, n=%d):\n", nfo.nameA, noA);
+  // for(i=0; i < noA; i++) {
+  //   fprintf(stderr, "%u: column: %d, name:%s\n", i, grpA[i], 
+  //       csv[0]->strings[grpA[i]+2].str);
+  // }
 
-  fprintf(stderr, "the following ids belong to group B (name=%s, n=%d):\n", nfo.nameB, noB);
-  for(i=0; i < noB; i++) {
-    fprintf(stderr, "%u: column: %d, name:%s\n", i, grpB[i], 
-        csv[0]->strings[grpB[i]+2].str);
-  }
+  // fprintf(stderr, "the following ids belong to group B (name=%s, n=%d):\n", nfo.nameB, noB);
+  // for(i=0; i < noB; i++) {
+  //   fprintf(stderr, "%u: column: %d, name:%s\n", i, grpB[i], 
+  //       csv[0]->strings[grpB[i]+2].str);
+  // }
+  
+  // newcodes
 
   destructStringset(NULL, csv[0]);
   FREEMEMORY(NULL, csv);
@@ -2018,7 +2093,7 @@ int main(int argc, char** argv) {
             int nan = checkSetNAN(csv, values);
             if(nan>0) {
           //      fprintf(stderr,"call fillNAN");
-                nan = fillNAN(values, grpA, noA, grpB, noB, &nfo);
+                nan = fillNAN(values, groupID, groupSize, &nfo);
          //       fprintf(stderr,"...done\n");
                 
             }
@@ -2157,7 +2232,7 @@ int main(int argc, char** argv) {
             int nan = checkSetNAN(csv, values);
             if(nan>0) {
   //              fprintf(stdout,"call fillNAN");
-                nan = fillNAN(values, grpA, noA, grpB, noB, &nfo);
+                nan = fillNAN(values, groupID, groupSize, &nfo);
             }
             if(nan>0) {
                 destructStringset(NULL, csv[0]);
@@ -2223,7 +2298,7 @@ int main(int argc, char** argv) {
 
                           } else { 
                             fprintf(stderr, "region testing %s-[%d,%d]\n", seg->chr, seg->start, seg->stop);
-                            regionTest(seg, grpA, noA, grpB, noB, &nfo);
+                            regionTest(seg, groupID, groupSize, &nfo);
                               
                           }
                   }
@@ -2398,7 +2473,7 @@ int main(int argc, char** argv) {
 
                           } else { 
     //                        fprintf(stderr, "region testing %s-[%d,%d]\n", seg->chr, seg->start, seg->stop);
-                            regionTest(seg, grpA, noA, grpB, noB, &nfo);
+                            regionTest(seg, groupID, groupSize, &nfo);
                               
                           }
                   seg = tmp;
@@ -2424,7 +2499,7 @@ int main(int argc, char** argv) {
     //fprintf(stderr,"output->n: %d\n",nfo.outputList->n);
       
       
-    ln = readcsvlines(NULL, fi, '\t', 1, &csv);
+    ln = readcsvlines(NULL, fi, '\t', 1, &csv); // zzhu$ reading the methyl table into variable 'csv'
     j = 0;
     while(ln) { 
         //fprintf(stderr,"#new LINE\n");
@@ -2433,7 +2508,7 @@ int main(int argc, char** argv) {
         int nan = checkSetNAN(csv, values);
         if(nan>0) {
     //     fprintf(stderr,"#call fillNAN\n");
-            nan = fillNAN(values, grpA, noA, grpB, noB, &nfo);
+            nan = fillNAN(values, groupID, groupSize, &nfo);
     //      fprintf(stderr,"#...done\n");
         }
      //   fprintf(stdout,"#LINES INPUT\n");
@@ -2450,8 +2525,8 @@ int main(int argc, char** argv) {
         else {
     //            fprintf(stdout,"#LINE OKAY \n");
         }
-      char *x = my_strdup(csv[0]->strings[0].str);
-      int y = atoi(csv[0]->strings[1].str);
+      char *x = my_strdup(csv[0]->strings[0].str); //zzhu$ x: chromosome in current line
+      int y = atoi(csv[0]->strings[1].str); //zzhu$ y: CpG position in current line
 
       if(j > 0 && (strcmp(x, chr[j-1]) || y > pos[j-1] + nfo.maxdist ||
                    (nfo.maxseg > 0 && j >= nfo.maxseg))) {
@@ -2496,7 +2571,8 @@ int main(int argc, char** argv) {
 
         } else { 
           fprintf(stderr, "Segmenting %s-[%d,%d], %u CpGs\n", chr[0], pos[0], pos[j-1],j);
-          segmentation(chr, pos, val, j, grpA, noA, grpB, noB, &nfo);
+          // segmentation(chr, pos, val, j, grpA, noA, grpB, noB, &nfo);
+          segmentation(chr, pos, val, j, groupID, groupSize, &nfo);
           for(i=0; i < j; i++) { 
             FREEMEMORY(NULL, chr[i]);
             FREEMEMORY(NULL, val[i]);
@@ -2520,7 +2596,7 @@ int main(int argc, char** argv) {
       }
 
 
-      j+=1;
+      j+=1; // zzhu$ j: the number of CpGs in the segment
       destructStringset(NULL, csv[0]);
       csv[0] = NULL;
       FREEMEMORY(NULL, csv);
@@ -2530,7 +2606,7 @@ int main(int argc, char** argv) {
     } 
   
     fprintf(stderr, "segmenting %s-[%d,%d], %u CpGs \n", chr[0], pos[0], pos[j-1],j);
-    segmentation(chr, pos, val, j, grpA, noA, grpB, noB, &nfo);
+    segmentation(chr, pos, val, j, groupID, groupSize, &nfo);
     for(i=0; i < j; i++) { 
         FREEMEMORY(NULL, chr[i]);
         FREEMEMORY(NULL, val[i]);

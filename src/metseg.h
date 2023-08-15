@@ -92,6 +92,10 @@ typedef struct{
   int minNoA; //min number of present values to fill missing numbers in group A, below discard input line
   int minNoB;
   double valley;
+  int groups;// newcodes
+  int **groupID;// newcodes
+  int *groupSize;// newcodes
+  int **groupNumber;// newcodes
   //only used for threaded segmentation
   char **chr;
   int *pos;
@@ -112,6 +116,7 @@ typedef struct{
   int randomseed;
 
 } metseg_t;
+// zzhu$ metseg_t: parameters for the whole process and input data.
 
 void initSegment(segment_t *seg);
 
