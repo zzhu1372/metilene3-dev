@@ -1466,7 +1466,7 @@ segworker (void *args)
   metseg_t *t;
   t = (metseg_t*) args;
    
-  segmentation(t->chr, t->pos, t->value, t->n, t->groupID, t->groupSize, t->groupSize, t);
+  segmentation(t->chr, t->pos, t->value, t->n, t->groupID, t->groupSize, t->groupNumber, t);
   
   //cleanup own data
   for(i=0; i < t->n; i++) {
@@ -2042,7 +2042,7 @@ int main(int argc, char** argv) {
     for (j = 0; j < nfo.groups; j++)
     {
       int powj = pow(2,j);
-      if ((i/powj)%2==0)
+      if (((i+1)/powj)%2==0)
       {
         groupID[0][i] = ALLOCMEMORY(NULL, groupID[0][i], int, subgroupSize[j]);
         for (k = 0; k < subgroupSize[j]; k++)
