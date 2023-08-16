@@ -2044,25 +2044,29 @@ int main(int argc, char** argv) {
       int powj = pow(2,j);
       if (((i+1)/powj)%2==0)
       {
-        groupID[0][i] = ALLOCMEMORY(NULL, groupID[0][i], int, subgroupSize[j]);
+        groupID[0][i] = ALLOCMEMORY(NULL, groupID[0][i], int, groupSize[0][i]+subgroupSize[j]);
         for (k = 0; k < subgroupSize[j]; k++)
         {
           groupID[0][i][grpAindex] = subgroupID[j][k];
           grpAindex++;
+          fprintf(stderr, "CombinedGroup: 0; Sub:%d,%s\n", j, csv[0]->strings[subgroupID[j][k]+2].str);
         }
         groupSize[0][i] += subgroupSize[j];
+        
       } else {
-        groupID[1][i] = ALLOCMEMORY(NULL, groupID[1][i], int, subgroupSize[j]);
+        groupID[1][i] = ALLOCMEMORY(NULL, groupID[1][i], int, groupSize[1][i]+subgroupSize[j]);
         for (k = 0; k < subgroupSize[j]; k++)
         {
           groupID[1][i][grpBindex] = subgroupID[j][k];
           grpBindex++;
+          fprintf(stderr, "CombinedGroup: 1; Sub:%d,%s\n", j, csv[0]->strings[subgroupID[j][k]+2].str);
         }
         groupSize[1][i] += subgroupSize[j];
+        
       }
     }
 
-    fprintf(stderr, "CombinedGroup: %d; Size: %d. The following ids belong to this group:\n", i, groupSize[1][i]);
+    fprintf(stderr, "CombinedGroup: %d; Size: %d. The following ids belong to the first combined group:\n", i, groupSize[1][i]);
     for (j = 0; j < groupSize[1][i]; j++)
     {
       fprintf(stderr, "%u: column: %d, name:%s\n", j, groupID[1][i][j], 
