@@ -593,7 +593,7 @@ void kstest(segment_t *seg , int a, int b, char mindiff, char mincpgs, char test
  * @author Frank Juehling and Steve Hoffmann 
  *   
  */
-void means(segment_t *seg , int a, int b, int ***groupID, int **groupSize, int groupNumber, double *means){
+void means(segment_t *seg , int a, int b, int ***groupID, int **groupSize, int groupNumber, char **meansA, char **meansB){
 
   int i,j;
   double mean1=0;
@@ -623,8 +623,32 @@ void means(segment_t *seg , int a, int b, int ***groupID, int **groupSize, int g
   
   mean1/=dl1;
   mean2/=dl2;
-  means[0]=mean1;
-  means[1]=mean2;
+  // // means[0]=mean1;
+  // // means[1]=mean2;
+  // // char buffer1[20];
+  // // char buffer2[20];
+  // // gcvt(mean1, 10, *meansA);
+  // // gcvt(mean2, 10, buffer2);
+  
+  // *meansB="bbbb";
+
+  // // fprintf(stderr, "len bu%d, %s\n", strlen(buffer1), buffer1);
+  // // char buffer11[strlen(buffer1)];
+  // // gcvt(mean1, 10, buffer11);
+  // // *meansA=buffer11;
+  int string_length1 = snprintf(NULL, 0, "%f", mean1);
+  *meansA = (char *)malloc((string_length1 + 1) * sizeof(char));
+  snprintf(*meansA, string_length1 + 1, "%f", mean1);
+
+  int string_length2 = snprintf(NULL, 0, "%f", mean2);
+  *meansB = (char *)malloc((string_length2 + 1) * sizeof(char));
+  snprintf(*meansB, string_length2 + 1, "%f", mean2);
+
+  // fprintf(stderr, "mean 0:start\n");
+  // fprintf(stderr, "mean 0: \t%s\n", *meansA);
+  // fprintf(stderr, "mean 0: \t%s\n", *meansB);
+  // fprintf(stderr, "mean 0:end\n");
+  break;
   }
   
 
@@ -1233,6 +1257,8 @@ segmenterSTK(segment_t *seg, segment_t *globalbreaks, int *nglobal, double **XS,
  * @author Frank Juehling and Steve Hoffmann 
  *   
  */
+
+
 void
 output(segment_t *seg, segment_t *breaks, int nglobal, double **XS, 
     int ***groupID, int **groupSize, int groupNumber, metseg_t *nfo) {
@@ -1264,11 +1290,15 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double **XS,
         tmp->meandiff=b->meandiff;
         tmp->test=b->test;
         
-        double me[] = {-2,-2};
-        means(seg, tmp->start,tmp->stop, groupID, groupSize, groupNumber, me);
+        char *me[] = {"-2","-2"};
+        // fprintf(stderr, "Output 0: \t%s\n", me[0]);
+        // fprintf(stderr, "Output 0: \t%s\n", me[1]);
+        means(seg, tmp->start,tmp->stop, groupID, groupSize, groupNumber, &me[0], &me[1]);
+        // fprintf(stderr, "Output 1: \t%s\n", me[0]);
+        // fprintf(stderr, "Output 1: \t%s\n", me[1]);
         
-        tmp->methA=me[0];
-        tmp->methB=me[1];
+        // tmp->methA=me[0];
+        // tmp->methB=me[1]; //important!!!
         
 
       } else {
@@ -1308,8 +1338,8 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double **XS,
             nfo->outputList->segment_out[nfo->outputList->i].mwu = ks[2];
             nfo->outputList->segment_out[nfo->outputList->i].length = (tmp->stop-tmp->start+1);
             
-            double me[] = {-2,-2};
-            means(seg,tmp->start,tmp->stop, groupID, groupSize, groupNumber, me);
+            char *me[] = {"-2","-2"};
+            means(seg,tmp->start,tmp->stop, groupID, groupSize, groupNumber, &me[0], &me[1]);
             nfo->outputList->segment_out[nfo->outputList->i].methA = me[0];
             nfo->outputList->segment_out[nfo->outputList->i].methB = me[1];
             
@@ -1334,8 +1364,8 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double **XS,
         nfo->outputList->segment_out[nfo->outputList->i].mwu = b->test;
         nfo->outputList->segment_out[nfo->outputList->i].length = (b->stop-b->start+1);
         
-        double me[] = {-2,-2};
-        means(seg, b->start,b->stop, groupID, groupSize, groupNumber, me);
+        char *me[] = {"-2","-2"};
+        means(seg, b->start,b->stop, groupID, groupSize, groupNumber, &me[0], &me[1]);
         nfo->outputList->segment_out[nfo->outputList->i].methA = me[0];
         nfo->outputList->segment_out[nfo->outputList->i].methB = me[1];
            
@@ -1370,8 +1400,8 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double **XS,
         nfo->outputList->segment_out[nfo->outputList->i].mwu = ks[2];
         nfo->outputList->segment_out[nfo->outputList->i].length = (tmp->stop-tmp->start+1);
         
-        double me[] = {-2,-2};
-        means(seg, tmp->start,tmp->stop, groupID, groupSize, groupNumber, me);
+        char *me[] = {"-2","-2"};
+        means(seg, tmp->start,tmp->stop, groupID, groupSize, groupNumber, &me[0], &me[1]);
         nfo->outputList->segment_out[nfo->outputList->i].methA = me[0];
         nfo->outputList->segment_out[nfo->outputList->i].methB = me[1];
         
@@ -1501,8 +1531,8 @@ regionTest(segment_t *seg, int ***groupID, int **groupSize, int groupNumber, met
         kstest(seg , 0, seg->n-1, 0, 0, 1, ks, groupID, groupSize, groupNumber, nfo);
        
     }
-    double me[] = {-2,-2};
-    means(seg, 0, seg->n-1,groupID, groupSize, groupNumber,me);
+    char *me[] = {"-2","-2"};
+    means(seg, 0, seg->n-1,groupID, groupSize, groupNumber,&me[0],&me[1]);
     
 //    void kstest(segment_t *seg , int a, int b, char mindiff, char mincpgs, char test, 
 //  (segment_t *seg , int a, int b, char mindiff, char mincpgs, char test, 
@@ -1576,8 +1606,8 @@ cpgTest(char *chr, int start, int stop, double ratio, double p, metseg_t *nfo, d
     nfo->outputList->segment_out[nfo->outputList->i].meandiff = ratio;
     nfo->outputList->segment_out[nfo->outputList->i].mwu = p;
     nfo->outputList->segment_out[nfo->outputList->i].length = 1;
-    nfo->outputList->segment_out[nfo->outputList->i].methA = methA;
-    nfo->outputList->segment_out[nfo->outputList->i].methB = methB;
+    // nfo->outputList->segment_out[nfo->outputList->i].methA = methA;
+    // nfo->outputList->segment_out[nfo->outputList->i].methB = methB; // important!!!
     
     nfo->outputList->i+=1;
     nfo->outputList->numberTests+=1;
@@ -2691,7 +2721,7 @@ int main(int argc, char** argv) {
     multiple_testing_correction(nfo.outputList, nfo.mode, nfo.mtc);
     for(int i=0;i<nfo.outputList->i;i++){
       if(nfo.outputList->segment_out[i].meandiff >= nfo.minMethDist || nfo.outputList->segment_out[i].meandiff <= -1* nfo.minMethDist) {
-        fprintf(stdout, "%s\t%d\t%d\t%.5g\t%f\t%d\t%.5g\t%.5g\t%.5g\t%.5g\n", 
+        fprintf(stdout, "%s\t%d\t%d\t%.5g\t%f\t%d\t%.5g\t%.5g\t%s\t%s\n", 
                 nfo.outputList->segment_out[i].chr,
                 nfo.outputList->segment_out[i].start,
                 nfo.outputList->segment_out[i].stop,
