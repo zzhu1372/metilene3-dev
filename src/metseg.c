@@ -593,64 +593,120 @@ void kstest(segment_t *seg , int a, int b, char mindiff, char mincpgs, char test
  * @author Frank Juehling and Steve Hoffmann 
  *   
  */
-void means(segment_t *seg , int a, int b, int ***groupID, int **groupSize, int groupNumber, char **meansA, char **meansB){
+
+void concatFloats(char **x, float *y, size_t size) {
+    // Check if the input pointers are valid
+    if (x == NULL || y == NULL) {
+        printf("Invalid input pointers\n");
+        return;
+    }
+
+    // Calculate the length needed for the string
+    size_t total_length = 0;
+    for (size_t i = 0; i < size; ++i) {
+        total_length += snprintf(NULL, 0, "%.2f", y[i]) + 1; // +1 for the comma
+    }
+    total_length -= 1; // Subtract 1 to remove the last comma
+
+    // Allocate memory for the string
+    *x = (char *)malloc(total_length + 1);
+    if (*x == NULL) {
+        printf("Memory allocation failed\n");
+        return;
+    }
+
+    // Create the comma-separated string
+    char *ptr = *x;
+    for (size_t i = 0; i < size; ++i) {
+        int written = snprintf(ptr, total_length + 1, "%.2f", y[i]);
+        if (written <= 0) {
+            printf("Error formatting float\n");
+            free(*x);
+            return;
+        }
+        ptr += written;
+        total_length -= written;
+        if (total_length > 0) {
+            *ptr = ','; // Add comma separator
+            ++ptr;
+            --total_length;
+        }
+    }
+}
+
+void means(segment_t *seg , int a, int b, int ***groupID, int **groupSize, int groupNumber, int **subgroupID, int *subgroupSize, int subgroupNumber, char **meansA, char **meansB){
 
   int i,j;
-  double mean1=0;
-  double mean2=0;
-  double dl1=0;
-  double dl2=0;
+  float meanvalues[groupNumber];
+  float submeanvalues[subgroupNumber];
+  // float dl1=0;
+  // float dl2=0;
 
-  for (int groupCombination = 0; groupCombination < groupNumber; groupCombination++)
+  size_t total_length1 = 0;
+  size_t total_length2 = 0;
+  size_t total_length_sub1 = 0;
+  size_t total_length_sub2 = 0;
+
+  // for (int i = 0; groupCombination < groupNumber; groupCombination++)
+  // {
+  //   int *grpA = groupID[0][groupCombination];
+  //   int noA = groupSize[0][groupCombination];
+  //   int *grpB = groupID[1][groupCombination];
+  //   int noB = groupSize[1][groupCombination];
+  
+  //  for(i=a; i<=b ; i++) {
+  //   for(j=0; j < noA; j++) {
+  //    mean1+=seg->value[i][grpA[j]];
+  //    dl1+=1;
+  //   }
+  // }
+  // for(i=a; i<=b; i++) {
+  //   for(j=0;j<noB;j++) {
+  //     mean2+=seg->value[i][grpB[j]];
+  //     dl2+=1;
+  //   }
+  // }
+  
+  // mean1/=dl1;
+  // mean2/=dl2;
+
+  // total_length1 += snprintf(NULL, 0, "%.2f", mean1) + 1;
+  // meanvalues[groupNumber]
+
+  // int string_length1 = snprintf(NULL, 0, "%f", mean1);
+  
+  // snprintf(*meansA, string_length1 + 1, "%f", mean1);
+
+  // int string_length2 = snprintf(NULL, 0, "%f", mean2);
+  // *meansB = (char *)malloc((string_length2 + 1) * sizeof(char));
+  // snprintf(*meansB, string_length2 + 1, "%f", mean2);
+
+  // break;
+  // }
+
+  for (int sgn = 0; sgn < subgroupNumber; sgn++)
   {
-    int *grpA = groupID[0][groupCombination];
-    int noA = groupSize[0][groupCombination];
-    int *grpB = groupID[1][groupCombination];
-    int noB = groupSize[1][groupCombination];
-  
-   for(i=a; i<=b ; i++) {
-    for(j=0; j < noA; j++) {
-     mean1+=seg->value[i][grpA[j]];
-     dl1+=1;
+    float dl = 0;
+    int *grpA = subgroupID[sgn];
+    int noA = subgroupSize[sgn];
+    float mean=0;
+    for(i=a; i<=b ; i++) {
+      for(j=0; j < noA; j++) {
+        mean+=seg->value[i][grpA[j]];
+        dl+=1;
+      }
     }
-  }
-  for(i=a; i<=b; i++) {
-    for(j=0;j<noB;j++) {
-      mean2+=seg->value[i][grpB[j]];
-      dl2+=1;
-    }
-  }
   
-  mean1/=dl1;
-  mean2/=dl2;
-  // // means[0]=mean1;
-  // // means[1]=mean2;
-  // // char buffer1[20];
-  // // char buffer2[20];
-  // // gcvt(mean1, 10, *meansA);
-  // // gcvt(mean2, 10, buffer2);
-  
-  // *meansB="bbbb";
-
-  // // fprintf(stderr, "len bu%d, %s\n", strlen(buffer1), buffer1);
-  // // char buffer11[strlen(buffer1)];
-  // // gcvt(mean1, 10, buffer11);
-  // // *meansA=buffer11;
-  int string_length1 = snprintf(NULL, 0, "%f", mean1);
-  *meansA = (char *)malloc((string_length1 + 1) * sizeof(char));
-  snprintf(*meansA, string_length1 + 1, "%f", mean1);
-
-  int string_length2 = snprintf(NULL, 0, "%f", mean2);
-  *meansB = (char *)malloc((string_length2 + 1) * sizeof(char));
-  snprintf(*meansB, string_length2 + 1, "%f", mean2);
-
-  // fprintf(stderr, "mean 0:start\n");
-  // fprintf(stderr, "mean 0: \t%s\n", *meansA);
-  // fprintf(stderr, "mean 0: \t%s\n", *meansB);
-  // fprintf(stderr, "mean 0:end\n");
-  break;
+    mean/=dl;
+    submeanvalues[sgn]=mean;
+    // fprintf(stderr, "mean of %d:%f.\n",sgn, submeanvalues[sgn]);
   }
-  
+
+  char *tmp =NULL;
+  concatFloats(&tmp, submeanvalues, subgroupNumber);
+  // fprintf(stderr, "means:%s.\n",tmp);
+  *meansA = tmp;
+  *meansB = "TBC";
 
 }
 
@@ -1261,7 +1317,9 @@ segmenterSTK(segment_t *seg, segment_t *globalbreaks, int *nglobal, double **XS,
 
 void
 output(segment_t *seg, segment_t *breaks, int nglobal, double **XS, 
-    int ***groupID, int **groupSize, int groupNumber, metseg_t *nfo) {
+    int ***groupID, int **groupSize, int groupNumber, 
+    int **subgroupID, int *subgroupSize, int subgroupNumber, 
+    metseg_t *nfo) {
   
     
   if(nfo->outputList->i >= nfo->outputList->n) {
@@ -1293,7 +1351,7 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double **XS,
         char *me[] = {"-2","-2"};
         // fprintf(stderr, "Output 0: \t%s\n", me[0]);
         // fprintf(stderr, "Output 0: \t%s\n", me[1]);
-        means(seg, tmp->start,tmp->stop, groupID, groupSize, groupNumber, &me[0], &me[1]);
+        means(seg, tmp->start,tmp->stop, groupID, groupSize, groupNumber, subgroupID, subgroupSize, subgroupNumber, &me[0], &me[1]);
         // fprintf(stderr, "Output 1: \t%s\n", me[0]);
         // fprintf(stderr, "Output 1: \t%s\n", me[1]);
         
@@ -1339,7 +1397,7 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double **XS,
             nfo->outputList->segment_out[nfo->outputList->i].length = (tmp->stop-tmp->start+1);
             
             char *me[] = {"-2","-2"};
-            means(seg,tmp->start,tmp->stop, groupID, groupSize, groupNumber, &me[0], &me[1]);
+            means(seg,tmp->start,tmp->stop, groupID, groupSize, groupNumber, subgroupID, subgroupSize, subgroupNumber, &me[0], &me[1]);
             nfo->outputList->segment_out[nfo->outputList->i].methA = me[0];
             nfo->outputList->segment_out[nfo->outputList->i].methB = me[1];
             
@@ -1365,7 +1423,7 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double **XS,
         nfo->outputList->segment_out[nfo->outputList->i].length = (b->stop-b->start+1);
         
         char *me[] = {"-2","-2"};
-        means(seg, b->start,b->stop, groupID, groupSize, groupNumber, &me[0], &me[1]);
+        means(seg, b->start,b->stop, groupID, groupSize, groupNumber,subgroupID, subgroupSize, subgroupNumber, &me[0], &me[1]);
         nfo->outputList->segment_out[nfo->outputList->i].methA = me[0];
         nfo->outputList->segment_out[nfo->outputList->i].methB = me[1];
            
@@ -1401,7 +1459,7 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double **XS,
         nfo->outputList->segment_out[nfo->outputList->i].length = (tmp->stop-tmp->start+1);
         
         char *me[] = {"-2","-2"};
-        means(seg, tmp->start,tmp->stop, groupID, groupSize, groupNumber, &me[0], &me[1]);
+        means(seg, tmp->start,tmp->stop, groupID, groupSize, groupNumber, subgroupID, subgroupSize, subgroupNumber, &me[0], &me[1]);
         nfo->outputList->segment_out[nfo->outputList->i].methA = me[0];
         nfo->outputList->segment_out[nfo->outputList->i].methB = me[1];
         
@@ -1434,7 +1492,9 @@ static pthread_mutex_t cnt;
 
 int 
 segmentation(char **chr, int *pos, double **value, int n, 
-    int ***groupID, int **groupSize, int groupNumber, metseg_t *nfo) {
+    int ***groupID, int **groupSize, int groupNumber, 
+    int **subgroupID, int *subgroupSize,
+    metseg_t *nfo) {
 
   double **S, trend;
   double ks[] = {2,0,2};
@@ -1462,7 +1522,7 @@ segmentation(char **chr, int *pos, double **value, int n,
     pthread_mutex_lock(&out);
   }
   //output here   
-  output(seg, global, nglobal, S, groupID, groupSize, groupNumber, nfo);
+  output(seg, global, nglobal, S, groupID, groupSize, groupNumber, subgroupID, subgroupSize, nfo->groups, nfo);
   //unlock if necessary
   if(nfo->threads > 1) {
     pthread_mutex_unlock(&out);
@@ -1496,7 +1556,7 @@ segworker (void *args)
   metseg_t *t;
   t = (metseg_t*) args;
    
-  segmentation(t->chr, t->pos, t->value, t->n, t->groupID, t->groupSize, t->groupNumber, t);
+  segmentation(t->chr, t->pos, t->value, t->n, t->groupID, t->groupSize, t->groupNumber, t->subgroupID, t->subgroupSize, t);
   
   //cleanup own data
   for(i=0; i < t->n; i++) {
@@ -1525,14 +1585,15 @@ segworker (void *args)
  */
 
 void 
-regionTest(segment_t *seg, int ***groupID, int **groupSize, int groupNumber, metseg_t *nfo) {
+regionTest(segment_t *seg, int ***groupID, int **groupSize, int groupNumber, 
+int **subgroupID, int *subgroupSize, metseg_t *nfo) {
     double ks[] = {2,0,2};
     if(seg->n>0) {
         kstest(seg , 0, seg->n-1, 0, 0, 1, ks, groupID, groupSize, groupNumber, nfo);
        
     }
     char *me[] = {"-2","-2"};
-    means(seg, 0, seg->n-1,groupID, groupSize, groupNumber,&me[0],&me[1]);
+    means(seg, 0, seg->n-1,groupID, groupSize, groupNumber, subgroupID, subgroupSize, nfo->groups, &me[0],&me[1]);
     
 //    void kstest(segment_t *seg , int a, int b, char mindiff, char mincpgs, char test, 
 //  (segment_t *seg , int a, int b, char mindiff, char mincpgs, char test, 
@@ -1670,7 +1731,7 @@ segworker_region (void *args)
 {
   metseg_t *t;
   t = (metseg_t*) args;
-  regionTest(t->seg, t->groupID, t->groupSize, t->groupNumber, t);
+  regionTest(t->seg, t->groupID, t->groupSize, t->groupNumber, t->subgroupID, t->subgroupSize, t);
           
   pthread_mutex_lock(&cnt);
   schedule[t->threadno] = 0;
@@ -2389,7 +2450,7 @@ int main(int argc, char** argv) {
 
                           } else { 
                             fprintf(stderr, "region testing %s-[%d,%d]\n", seg->chr, seg->start, seg->stop);
-                            regionTest(seg, groupID, groupSize, groupNumber, &nfo);
+                            regionTest(seg, groupID, groupSize, groupNumber, subgroupID, subgroupSize, &nfo);
                               
                           }
                   }
@@ -2564,7 +2625,7 @@ int main(int argc, char** argv) {
 
                           } else { 
     //                        fprintf(stderr, "region testing %s-[%d,%d]\n", seg->chr, seg->start, seg->stop);
-                            regionTest(seg, groupID, groupSize, groupNumber, &nfo);
+                            regionTest(seg, groupID, groupSize, groupNumber, subgroupID, subgroupSize, &nfo);
                               
                           }
                   seg = tmp;
@@ -2663,7 +2724,7 @@ int main(int argc, char** argv) {
         } else { 
           fprintf(stderr, "Segmenting %s-[%d,%d], %u CpGs\n", chr[0], pos[0], pos[j-1],j);
           // segmentation(chr, pos, val, j, grpA, noA, grpB, noB, &nfo);
-          segmentation(chr, pos, val, j, groupID, groupSize, groupNumber, &nfo);
+          segmentation(chr, pos, val, j, groupID, groupSize, groupNumber, subgroupID, subgroupSize, &nfo);
           for(i=0; i < j; i++) { 
             FREEMEMORY(NULL, chr[i]);
             FREEMEMORY(NULL, val[i]);
@@ -2697,7 +2758,7 @@ int main(int argc, char** argv) {
     } 
   
     fprintf(stderr, "segmenting %s-[%d,%d], %u CpGs \n", chr[0], pos[0], pos[j-1],j);
-    segmentation(chr, pos, val, j, groupID, groupSize, groupNumber, &nfo);
+    segmentation(chr, pos, val, j, groupID, groupSize, groupNumber, subgroupID, subgroupSize, &nfo);
     for(i=0; i < j; i++) { 
         FREEMEMORY(NULL, chr[i]);
         FREEMEMORY(NULL, val[i]);
