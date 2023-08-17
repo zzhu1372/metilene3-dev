@@ -2139,8 +2139,10 @@ int main(int argc, char** argv) {
   groupSize = ALLOCMEMORY(NULL, NULL, int*, 2);
   for (i = 0; i < 2; i++)
   {
+    groupID[i] = NULL;
     groupID[i] = ALLOCMEMORY(NULL, groupID[i], int*, groupNumber);
-    groupSize[i] = ALLOCMEMORY(NULL, groupSize[i], int*, groupNumber);
+    groupSize[i] = NULL;
+    groupSize[i] = ALLOCMEMORY(NULL, groupSize[i], int, groupNumber);
   }
   for (i = 0; i < groupNumber; i++)
   {
@@ -2727,14 +2729,25 @@ int main(int argc, char** argv) {
           schedule[i]=1;
           pthread_mutex_unlock(&cnt);
           //assign task
+  /*copied from segworker*/
+  //         segmentation(t->chr, t->pos, t->value, t->n, t->groupID, t->groupSize, t->groupNumber, t->subgroupID, t->subgroupSize, t);
+  
+  // //cleanup own data
+  // for(i=0; i < t->n; i++) {
+  //   FREEMEMORY(NULL, t->chr[i]);
+  //   FREEMEMORY(NULL, t->value[i]);
+  // }
+  // FREEMEMORY(NULL, t->chr);
+  // FREEMEMORY(NULL, t->pos);
+  // FREEMEMORY(NULL, t->value);
           th_nfo[i].chr = chr;
           th_nfo[i].pos = pos;
           th_nfo[i].value = val;
           th_nfo[i].n = j;
-          th_nfo[i].grpA = grpA;
-          th_nfo[i].grpB = grpB;
-          th_nfo[i].noA = noA;
-          th_nfo[i].noB = noB;
+          th_nfo[i].groupID = groupID;
+          th_nfo[i].groupSize = groupSize;
+          th_nfo[i].subgroupID = subgroupID;
+          th_nfo[i].subgroupSize = subgroupSize;
           th_nfo[i].threadno = i;
           th_nfo[i].outputList = nfo.outputList;
           
