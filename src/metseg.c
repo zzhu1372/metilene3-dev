@@ -594,42 +594,31 @@ void kstest(segment_t *seg , int a, int b, char mindiff, char mincpgs, char test
  *   
  */
 
-void concatFloats(char **x, float *y, size_t size) {
-    // Check if the input pointers are valid
-    if (x == NULL || y == NULL) {
-        printf("Invalid input pointers\n");
-        return;
-    }
-
-    // Calculate the length needed for the string
+void concatFloatsToString(char **x, float *y, size_t size, int multisep) {
     size_t total_length = 0;
     for (size_t i = 0; i < size; ++i) {
-        total_length += snprintf(NULL, 0, "%.2f", y[i]) + 1; // +1 for the comma
+        total_length += snprintf(NULL, 0, "%.3f", y[i]) + 1;
     }
-    total_length -= 1; // Subtract 1 to remove the last comma
+    total_length -= 1;
 
-    // Allocate memory for the string
     *x = (char *)malloc(total_length + 1);
-    if (*x == NULL) {
-        printf("Memory allocation failed\n");
-        return;
-    }
 
-    // Create the comma-separated string
     char *ptr = *x;
     for (size_t i = 0; i < size; ++i) {
-        int written = snprintf(ptr, total_length + 1, "%.2f", y[i]);
-        if (written <= 0) {
-            printf("Error formatting float\n");
-            free(*x);
-            return;
-        }
+        int written = snprintf(ptr, total_length + 1, "%.3f", y[i]);
         ptr += written;
         total_length -= written;
         if (total_length > 0) {
-            *ptr = ','; // Add comma separator
+          if (((i%2)==0)&&(multisep==1))
+          {
+            *ptr = ',';
             ++ptr;
             --total_length;
+          }else{
+            *ptr = '|';
+            ++ptr;
+            --total_length;
+          }
         }
     }
 }
@@ -637,58 +626,14 @@ void concatFloats(char **x, float *y, size_t size) {
 void means(segment_t *seg , int a, int b, int ***groupID, int **groupSize, int groupNumber, int **subgroupID, int *subgroupSize, int subgroupNumber, char **meansA, char **meansB){
 
   int i,j;
-  float meanvalues[groupNumber];
+  float meanvalues[groupNumber*2];
   float submeanvalues[subgroupNumber];
-  // float dl1=0;
-  // float dl2=0;
-
-  size_t total_length1 = 0;
-  size_t total_length2 = 0;
-  size_t total_length_sub1 = 0;
-  size_t total_length_sub2 = 0;
-
-  // for (int i = 0; groupCombination < groupNumber; groupCombination++)
-  // {
-  //   int *grpA = groupID[0][groupCombination];
-  //   int noA = groupSize[0][groupCombination];
-  //   int *grpB = groupID[1][groupCombination];
-  //   int noB = groupSize[1][groupCombination];
-  
-  //  for(i=a; i<=b ; i++) {
-  //   for(j=0; j < noA; j++) {
-  //    mean1+=seg->value[i][grpA[j]];
-  //    dl1+=1;
-  //   }
-  // }
-  // for(i=a; i<=b; i++) {
-  //   for(j=0;j<noB;j++) {
-  //     mean2+=seg->value[i][grpB[j]];
-  //     dl2+=1;
-  //   }
-  // }
-  
-  // mean1/=dl1;
-  // mean2/=dl2;
-
-  // total_length1 += snprintf(NULL, 0, "%.2f", mean1) + 1;
-  // meanvalues[groupNumber]
-
-  // int string_length1 = snprintf(NULL, 0, "%f", mean1);
-  
-  // snprintf(*meansA, string_length1 + 1, "%f", mean1);
-
-  // int string_length2 = snprintf(NULL, 0, "%f", mean2);
-  // *meansB = (char *)malloc((string_length2 + 1) * sizeof(char));
-  // snprintf(*meansB, string_length2 + 1, "%f", mean2);
-
-  // break;
-  // }
 
   for (int sgn = 0; sgn < subgroupNumber; sgn++)
   {
-    float dl = 0;
     int *grpA = subgroupID[sgn];
     int noA = subgroupSize[sgn];
+    float dl = 0;
     float mean=0;
     for(i=a; i<=b ; i++) {
       for(j=0; j < noA; j++) {
@@ -699,14 +644,46 @@ void means(segment_t *seg , int a, int b, int ***groupID, int **groupSize, int g
   
     mean/=dl;
     submeanvalues[sgn]=mean;
-    // fprintf(stderr, "mean of %d:%f.\n",sgn, submeanvalues[sgn]);
   }
 
+  for (int gn = 0; gn < groupNumber; gn++)
+  {
+    int *grpA = groupID[0][gn];
+    int noA = groupSize[0][gn];
+    int *grpB = groupID[1][gn];
+    int noB = groupSize[1][gn];
+    float dlA = 0;
+    float dlB = 0;
+    float meanA=0;
+    float meanB=0;
+    for(i=a; i<=b ; i++) {
+      for(j=0; j < noA; j++) {
+        meanA+=seg->value[i][grpA[j]];
+        dlA+=1;
+      }
+    }
+
+    for(i=a; i<=b ; i++) {
+      for(j=0; j < noB; j++) {
+        meanB+=seg->value[i][grpB[j]];
+        dlB+=1;
+      }
+    }
+  
+    meanA/=dlA;
+    meanB/=dlB;
+    meanvalues[gn*2]=meanA;
+    meanvalues[gn*2+1]=meanB;
+  }
+
+  char *subtmp =NULL;
+  concatFloatsToString(&subtmp, submeanvalues, subgroupNumber, 0);
+  *meansA = subtmp;
+
   char *tmp =NULL;
-  concatFloats(&tmp, submeanvalues, subgroupNumber);
-  // fprintf(stderr, "means:%s.\n",tmp);
-  *meansA = tmp;
-  *meansB = "TBC";
+  concatFloatsToString(&tmp, meanvalues, groupNumber*2, 1);
+  *meansB = tmp;
+  // *meansB = "TBC";
 
 }
 
