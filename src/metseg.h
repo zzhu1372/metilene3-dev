@@ -41,8 +41,8 @@ typedef struct{
   int n;
   double meandiff;
   int length;
-  double methA;
-  double methB;
+  char *methA;
+  char *methB;
 } segment_out;
 
 typedef struct{
@@ -93,9 +93,13 @@ typedef struct{
   int minNoB;
   double valley;
   int groups;// newcodes
-  int **groupID;// newcodes
-  int *groupSize;// newcodes
-  int **groupNumber;// newcodes
+  int **subgroupID;// newcodes
+  int *subgroupSize;// newcodes
+  int ***groupID;// newcodes
+  int **groupSize;// newcodes
+  int groupNumber;// newcodes
+
+
   //only used for threaded segmentation
   char **chr;
   int *pos;
