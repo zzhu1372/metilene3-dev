@@ -25,6 +25,7 @@ typedef struct segm{
   int stop;
   double meandiff;
   int length;
+  double sigcp;
   char *chr;
   char init;
   struct segm *next;
@@ -41,6 +42,7 @@ typedef struct{
   int n;
   double meandiff;
   int length;
+  double sigcp;
   char *methA;
   char *methB;
 } segment_out;
