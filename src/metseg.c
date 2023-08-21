@@ -2984,7 +2984,7 @@ int main(int argc, char** argv) {
                 nfo.outputList->segment_out[i].mwu,
                 nfo.outputList->segment_out[i].p,
                 nfo.outputList->segment_out[i].methA,
-                nfo.outputList->segment_out[i].methA,
+                nfo.outputList->segment_out[i].methB,
                 nfo.outputList->segment_out[i].sigcp);
       }
     }
