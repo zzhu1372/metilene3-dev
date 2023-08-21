@@ -286,6 +286,9 @@ setSegment(segment_t *seg, char *chr, int start, int stop,
   seg->test = test;
   seg->meandiff = meandiff;
   seg->sigcp = sigcp;
+
+  assert((stop-start+1>=10)||(prob>1));
+  
 }
 
 /*--------------------------------- get_meandiff ---------------------------------
@@ -503,11 +506,11 @@ void kstest(segment_t *seg , int a, int b, char mindiff, char mincpgs, char test
 
   //mincpgs set to false by default so this condition is never fullfilled
 
-  mindiff = 0;
-  mincpgs = 0;
-  if(l< nfo->mincpgs && mincpgs) {
-    ks[0]=2;ks[1]=0;ks[2]=2;
-  }
+  // mindiff = 0;
+  // mincpgs = 0;
+  // if(l< nfo->mincpgs && mincpgs) {
+  //   ks[0]=2;ks[1]=0;ks[2]=2;
+  // }
   //debug
   //  fprintf(stderr, "kstest for: %d\n",l);
   la = ALLOCMEMORY(NULL, NULL, double*, 2);
@@ -997,10 +1000,10 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
   int dimZ, child = 0; // zzhu$ child: the pointer to a child, start from the left child
   int ab[3] = {-1,0,-1}; // {a,b,group with min P}
   int ab_tmp[2] = {-1,0};
-  double ks1[] = {2,0,2,-1}; // zzhu$ {ks p, mean diff, ranksums p,group with min P }
+  double ks1[] = {2,0,2,-1}; // zzhu$ {ks p, mean diff, ranksums p,group with min P } for all combinations
   double ks2[] = {2,0,2,-1};
   double ks3[] = {2,0,2,-1};
-  double ks1_tmp[] = {2,0,2};
+  double ks1_tmp[] = {2,0,2}; // zzhu$ {ks p, mean diff, ranksums p} for one combination
   double ks2_tmp[] = {2,0,2};
   double ks3_tmp[] = {2,0,2};
   // double ks1[groupNumber][3];
@@ -1024,7 +1027,8 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
   //   ks3[i][1] = 0;
   //   ks3[i][2] = 2;
   // }
-  double init[] = {2,0,2};
+  double init_kstmp[] = {2,0,2};
+  double init_ks[] = {2,0,2,-1};
 
   double **XZ;
   double newp; // prob, meandiff;
@@ -1039,13 +1043,18 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
         int Z_max = -1;
         int ab_updated = 0; // if no KS is performed, ab will be updated with max Z
         int ab_Zmax[3] = {-1,0,-1}; // if no KS is performed, ab will be updated with max Z
+
+        memmove(ks1, init_ks, sizeof(double)*4);
+        memmove(ks2, init_ks, sizeof(double)*4);
+        memmove(ks3, init_ks, sizeof(double)*4);
+
         for(int gn=0;gn<groupNumber;gn++){
           ab_tmp[0] = 0;
           ab_tmp[1] = 0;
 
-          memmove(ks1_tmp, init, sizeof(double)*3);
-          memmove(ks2_tmp, init, sizeof(double)*3);
-          memmove(ks3_tmp, init, sizeof(double)*3);
+          memmove(ks1_tmp, init_kstmp, sizeof(double)*3);
+          memmove(ks2_tmp, init_kstmp, sizeof(double)*3);
+          memmove(ks3_tmp, init_kstmp, sizeof(double)*3);
 
           // double ks1_tmp[] = {2,0,2};
           // double ks2_tmp[] = {2,0,2};
@@ -1124,6 +1133,7 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
             ab[1] = ab_tmp[1];
             ab[2] = gn;
             ab_updated = 1;
+            // fprintf(stderr,"ab updated. a:%d,b:%d,ab0:%d,ab1:%d,ks:%f\n", a,b, ab[0],ab[1],ks3[0]);
           }
         }
         if(ab_updated==0){
@@ -1133,17 +1143,18 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
           ks1[3] = ab_Zmax[2];
           ks2[3] = ab_Zmax[2];
           ks3[3] = ab_Zmax[2];
+          // fprintf(stderr,"ab not updated by p but Z. a:%d,b:%d,ab0:%d,ab1:%d,ks:%f\n", a,b, ab[0],ab[1],ks3[0]);
         }
         // fprintf(stderr,"ab:%d,%d",ab[0] ,ab[1] );
       }
 
       //if one of the children has a good ks we check all
       newp = MIN(ks1[0],MIN(ks2[0],ks3[0]));
-
+      // assert(((newp<1)&&(ab[1]-ab[0]>=nfo->mincpgs)));
       //if the p-value of one of the three intervals is better than the original
       //recurse down to find the best subinterval
       if((newp<KS[0] || (newp>1 && KS[0]>1)) && (b-a >= nfo->mincpgs)) { // zzhu$ termination criteria (1)#CpG (2)p_child>p_parent. no need for newp>1???
-
+        assert((b-ab[1]+1>=10)||(ks3[0]>1));
         pushSegment_p (&stack, a, b, ab, child+1, ks1, ks2, ks3, KS, NULL); // zzhu$ push the next child into the stack.
 
         //left interval child
@@ -1215,9 +1226,11 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
         a = -1;
         ab[0] = -1;
       }
+      
     }  else {
 
       popSegment_p (&stack, &a, &b, ab, &child, ks1, ks2, ks3, KS, NULL);
+      // fprintf(stderr,"a%d,b%d,ab%d,ab%d,ks1%f,ks2%f,ks3%f\n", a,b, ab[0], ab[1], ks1[0], ks2[0], ks3[0]);
 
       if(child == 3) a = -1;
 
@@ -1441,7 +1454,13 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
             nfo->outputList->segment_out[nfo->outputList->i].chr = ALLOCMEMORY(NULL, NULL, char, strlen(seg->chr)+1);
             nfo->outputList->segment_out[nfo->outputList->i].chr = strcpy(nfo->outputList->segment_out[nfo->outputList->i].chr,seg->chr);
             nfo->outputList->segment_out[nfo->outputList->i].start = seg->pos[tmp->start]-1;
-            // fprintf(stderr,"start1:");
+            if ((tmp->stop-tmp->start+1)<10)
+            {
+              fprintf(stderr,"start1:%f,%d\n",(ks[0]),(tmp->stop-tmp->start+1));
+              assert(0);
+            }
+            
+            // assert((ks[0]<1)&&((tmp->stop-tmp->start+1)<nfo->mincpgs));
             // if(nfo->outputList->i>=2){fprintf(stderr,"start1:%d,%d",seg->pos[tmp->start]-1,nfo->outputList->segment_out[2].start);}
             nfo->outputList->segment_out[nfo->outputList->i].stop = seg->pos[tmp->stop];
             nfo->outputList->segment_out[nfo->outputList->i].p = ks[0];
@@ -1469,6 +1488,12 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
         FREEMEMORY(NULL, tmp);
         tmp=NULL;
       }
+        if (( seg->pos[b->stop]-seg->pos[b->start]-1+1)<10)
+        {
+          fprintf(stderr,"start1:%f,%d\n",(b->prob),( seg->pos[b->stop]-seg->pos[b->start]-1+1));
+          assert(0);
+        }
+        
         nfo->outputList->segment_out[nfo->outputList->i].chr = ALLOCMEMORY(NULL, NULL, char, strlen(seg->chr)+1);
         nfo->outputList->segment_out[nfo->outputList->i].chr = strcpy(nfo->outputList->segment_out[nfo->outputList->i].chr,seg->chr);
         nfo->outputList->segment_out[nfo->outputList->i].start = seg->pos[b->start]-1;
@@ -1530,6 +1555,11 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
 
     if(ks[0]<2) {
         // fprintf(stderr,"NULL:\n");
+        if ((seg->pos[tmp->stop]-seg->pos[tmp->start]-1+1)<10)
+        {
+          fprintf(stderr,"start1:%f,%d\n",(ks[0]),( seg->pos[tmp->stop]-seg->pos[tmp->start]-1+1));
+          assert(0);
+        }
         nfo->outputList->segment_out[nfo->outputList->i].chr = ALLOCMEMORY(NULL, NULL, char, strlen(seg->chr)+1);
         nfo->outputList->segment_out[nfo->outputList->i].chr = strcpy(nfo->outputList->segment_out[nfo->outputList->i].chr,seg->chr);
         nfo->outputList->segment_out[nfo->outputList->i].start = seg->pos[tmp->start]-1;
@@ -1612,7 +1642,7 @@ segmentation(char **chr, int *pos, double **value, int n,
   {
     trend[gn] = calcSingleTrendAbs(S[gn], 0, n-1);
     novalley[gn] = noValley(S[gn], 0, n-1, nfo);
-    if(seg->n-1 >= nfo->mincpgs && trend[gn] > nfo->trend && novalley[gn]) {
+    if(seg->n-1 >= nfo->mincpgs && trend[gn] > nfo->trend && novalley[gn]) { // should be seg->n >= mincpg???
       kstest(seg , 0, n-1, 0, 1, 1, ks_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
       if (ks_tmp[0]<ks[0])
       {
@@ -1631,6 +1661,7 @@ segmentation(char **chr, int *pos, double **value, int n,
     pthread_mutex_lock(&out);
   }
   //output here   
+  // fprintf(stderr,"nfo->mincpgs:%d", nfo->mincpgs);
   output(seg, global, nglobal, S, groupID, groupSize, groupNumber, subgroupID, subgroupSize, nfo->groups, nfo);
   
   //unlock if necessary
