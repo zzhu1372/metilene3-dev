@@ -20,6 +20,7 @@
 #include "stringutils.h"
 #include "mathematics.h"
 #include "sort.h"
+#include "metseg.h"
 #include "mtc.h"
 
 /*----------------------- multiple_testing_correction --------------------------
