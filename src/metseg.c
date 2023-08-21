@@ -1454,7 +1454,7 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
             nfo->outputList->segment_out[nfo->outputList->i].chr = ALLOCMEMORY(NULL, NULL, char, strlen(seg->chr)+1);
             nfo->outputList->segment_out[nfo->outputList->i].chr = strcpy(nfo->outputList->segment_out[nfo->outputList->i].chr,seg->chr);
             nfo->outputList->segment_out[nfo->outputList->i].start = seg->pos[tmp->start]-1;
-            if ((tmp->stop-tmp->start+1)<10)
+            if ((tmp->stop-tmp->start+1+1)<10)
             {
               fprintf(stderr,"start1:%f,%d\n",(ks[0]),(tmp->stop-tmp->start+1));
               assert(0);
@@ -1488,9 +1488,9 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
         FREEMEMORY(NULL, tmp);
         tmp=NULL;
       }
-        if (( seg->pos[b->stop]-seg->pos[b->start]-1+1)<10)
+        if (( seg->pos[b->stop]-seg->pos[b->start]+1+1)<10)
         {
-          fprintf(stderr,"start1:%f,%d\n",(b->prob),( seg->pos[b->stop]-seg->pos[b->start]-1+1));
+          fprintf(stderr,"start1:%f,%d\n",(b->prob),( seg->pos[b->stop]-seg->pos[b->start]+1+1));
           assert(0);
         }
         
@@ -1555,9 +1555,9 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
 
     if(ks[0]<2) {
         // fprintf(stderr,"NULL:\n");
-        if ((seg->pos[tmp->stop]-seg->pos[tmp->start]-1+1)<10)
+        if ((seg->pos[tmp->stop]-seg->pos[tmp->start]+1+1)<10)
         {
-          fprintf(stderr,"start1:%f,%d\n",(ks[0]),( seg->pos[tmp->stop]-seg->pos[tmp->start]-1+1));
+          fprintf(stderr,"start1:%f,%d\n",(ks[0]),( seg->pos[tmp->stop]-seg->pos[tmp->start]+1+1));
           assert(0);
         }
         nfo->outputList->segment_out[nfo->outputList->i].chr = ALLOCMEMORY(NULL, NULL, char, strlen(seg->chr)+1);
@@ -2919,6 +2919,7 @@ int main(int argc, char** argv) {
           th_nfo[i].n = j;
           th_nfo[i].groupID = groupID;
           th_nfo[i].groupSize = groupSize;
+          th_nfo[i].groupNumber = groupNumber;
           th_nfo[i].subgroupID = subgroupID;
           th_nfo[i].subgroupSize = subgroupSize;
           th_nfo[i].threadno = i;
@@ -2931,6 +2932,8 @@ int main(int argc, char** argv) {
           //now we must make sure that each thread keeps his own chunk
           //of the input data, thus the three arrays are simply set to NULL
           //the thread is going to take care of the deallocation
+          fprintf(stderr, "segmented %s-[%d,%d], %u CpGs\n", chr[0], pos[0], pos[j-1], j);
+
           chr = NULL;
           pos = NULL;
           val = NULL;
