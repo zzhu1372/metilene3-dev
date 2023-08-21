@@ -732,7 +732,7 @@ calcSingleDiffSum(segment_t *s, int ***groupID, int **groupSize, int groupNumber
   }
   
 
-  return S;// important!!!TBC!!!
+  return S;
 }
 
 /*----------------------------- calcSingleTrend ------------------------------
@@ -1732,10 +1732,21 @@ segworker (void *args)
 void 
 regionTest(segment_t *seg, int ***groupID, int **groupSize, int groupNumber, 
 int **subgroupID, int *subgroupSize, metseg_t *nfo) {
-    double ks[] = {2,0,2};
+    double ks[] = {2,0,2,-1};
+    double ks_tmp[] = {2,0,2};
     if(seg->n>0) {
-        // kstest(seg , 0, seg->n-1, 0, 0, 1, ks, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo); //important!!!
-       
+      for (int gn = 0; gn < groupNumber; gn++)
+      {
+        kstest(seg , 0, seg->n-1, 0, 0, 1, ks_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
+        if (ks_tmp[0]<ks[0])
+        {
+          for (int i = 0; i < 3; i++)
+          {
+            ks[i] = ks_tmp[i];
+          }
+          ks[3] = gn;
+        } 
+      }
     }
     char *me[] = {"-2","-2"};
     means(seg, 0, seg->n-1,groupID, groupSize, groupNumber, subgroupID, subgroupSize, nfo->groups, &me[0],&me[1]);
@@ -1773,6 +1784,7 @@ int **subgroupID, int *subgroupSize, metseg_t *nfo) {
     nfo->outputList->segment_out[nfo->outputList->i].length = seg->n;
     nfo->outputList->segment_out[nfo->outputList->i].methA = me[0];
     nfo->outputList->segment_out[nfo->outputList->i].methB = me[1];
+    nfo->outputList->segment_out[nfo->outputList->i].sigcp = ks[3];
     
     nfo->outputList->i+=1;
     nfo->outputList->numberTests+=1;
@@ -2636,10 +2648,11 @@ int main(int argc, char** argv) {
                             pthread_mutex_unlock(&cnt);
                             //assign task
                             th_nfo[i].seg = seg;
-                            th_nfo[i].grpA = grpA;
-                            th_nfo[i].grpB = grpB;
-                            th_nfo[i].noA = noA;
-                            th_nfo[i].noB = noB;
+                            th_nfo[i].groupID = groupID;
+                            th_nfo[i].groupSize = groupSize;
+                            th_nfo[i].groupNumber = groupNumber;
+                            th_nfo[i].subgroupID = subgroupID;
+                            th_nfo[i].subgroupSize = subgroupSize;
                             th_nfo[i].threadno = i;
                             th_nfo[i].outputList = nfo.outputList;
           
@@ -3030,7 +3043,7 @@ int main(int argc, char** argv) {
     fprintf(stderr, "Multiple testing correction done.\n");
     for(int i=0;i<nfo.outputList->i;i++){
       if(nfo.outputList->segment_out[i].meandiff >= nfo.minMethDist || nfo.outputList->segment_out[i].meandiff <= -1* nfo.minMethDist) {
-        fprintf(stdout, "%s\t%d\t%d\t%.5g\t%f\t%d\t%.5g\t.\t%.5g\t%.5g\n", 
+        fprintf(stdout, "%s\t%d\t%d\t%.5g\t%f\t%d\t%.5g\t%s\t%s\n", 
                 nfo.outputList->segment_out[i].chr,
                 nfo.outputList->segment_out[i].start,
                 nfo.outputList->segment_out[i].stop,
