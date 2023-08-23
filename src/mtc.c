@@ -20,7 +20,7 @@
 #include "stringutils.h"
 #include "mathematics.h"
 #include "sort.h"
-#include "metseg.h"
+#include "metseg.h" // to support struct list_out
 #include "mtc.h"
 
 /*----------------------- multiple_testing_correction --------------------------
