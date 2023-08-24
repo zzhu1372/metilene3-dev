@@ -682,7 +682,7 @@ calcSingleDiffSum(segment_t *s, int ***groupID, int **groupSize, int groupNumber
     int *grpB = groupID[1][groupCombination];
     int noB = groupSize[1][groupCombination];
 
-    S[groupCombination] = ALLOCMEMORY(NULL, NULL, double*, s->n);
+    S[groupCombination] = ALLOCMEMORY(NULL, NULL, double**, s->n);
 
     for(i=0; i < s->n; i++) {
       S[groupCombination][i] = ALLOCMEMORY(NULL, NULL, double, 3);
@@ -743,14 +743,32 @@ calcSingleDiffSum(segment_t *s, int ***groupID, int **groupSize, int groupNumber
  */
 
 double 
-calcSingleTrendAbs(double **S,int s, int t) {
+calcSingleTrendAbs(double ***S, int gn, int s, int t) {
   double ds = s;
   double dt=t;
   double trend; 
+  for (int i = 0; i < (t-s+1); i++)
+  {
+    if ((s+i-1)>=0)
+    {
+      fprintf(stderr,"Gn%d,%d:%f,%f,%f\n",gn,i,S[gn][s+i][0]-S[gn][s+i-1][0],S[gn][s+i][1]-S[gn][s+i-1][1],S[gn][s+i][2]-S[gn][s+i-1][2]);
+    } else {
+      fprintf(stderr,"Gn%d,%d:%f,%f,%f\n",gn,i,S[gn][s+i][0],S[gn][s+i][1],S[gn][s+i][2]);
+    }  
+  }
+  if(s>0)
+    fprintf(stderr,"S[gn][t]:%f,%f,S[s-1]:%f,%f\n",S[gn][t][0],S[gn][s-1][0],S[gn][t][2],S[gn][s-1][2]);
+  
   if(s==0)
-    trend = fabs(S[t][2])/dt; // should divided by (dt+1)???
+    trend = fabs(S[gn][t][2])/dt; // should divided by (dt+1)???
   else
-    trend = fabs(S[t][2]-S[s-1][2])/(dt-ds+1);
+    trend = fabs(S[gn][t][2]-S[gn][s-1][2])/(dt-ds+1);
+
+  if ((gn==1)&&(s==15)&&(t==26))
+  {
+    assert(0);
+  }
+  
 
   return trend;
 }
@@ -1085,7 +1103,7 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
           //check the left side of the maximum interval with ks
           n=a; m=ab_tmp[0]-1;
           if(ab_tmp[0] > 0 && m-n+1 >= nfo->mincpgs 
-              && calcSingleTrendAbs(XS[gn],a,ab_tmp[0]-1) > nfo->trend 
+              && calcSingleTrendAbs(XS,gn,a,ab_tmp[0]-1) > nfo->trend 
               && noValley(XS[gn], a, ab_tmp[0]-1, nfo)) {
 
             kstest(seg, a, ab_tmp[0]-1, 0, 1, 1, ks1_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
@@ -1094,7 +1112,7 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
           //check the maximum interval interval with ks
           n=ab_tmp[0];m=ab_tmp[1];
           if(m-n+1 >= nfo->mincpgs 
-              && calcSingleTrendAbs(XS[gn],ab_tmp[0],ab_tmp[1]) > nfo->trend 
+              && calcSingleTrendAbs(XS,gn,ab_tmp[0],ab_tmp[1]) > nfo->trend 
               && noValley(XS[gn], ab_tmp[0], ab_tmp[1], nfo) ) {
 
             kstest(seg, ab_tmp[0], ab_tmp[1], 0, 1, 1, ks2_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
@@ -1103,7 +1121,7 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
           //check the right side of the maximum interval with ks
           n=ab_tmp[1]+1;m=b;
           if(m-n+1 >= nfo->mincpgs 
-              && calcSingleTrendAbs(XS[gn],ab_tmp[1]+1,b)> nfo->trend 
+              && calcSingleTrendAbs(XS,gn,ab_tmp[1]+1,b)> nfo->trend 
               && noValley(XS[gn], ab_tmp[1]+1, b, nfo)) {
 
             kstest(seg, ab_tmp[1]+1, b, 0, 1, 1, ks3_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
@@ -1133,7 +1151,7 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
             ab[1] = ab_tmp[1];
             ab[2] = gn;
             ab_updated = 1;
-            // fprintf(stderr,"ab updated. a:%d,b:%d,ks1:%f,ks2:%f,ks3:%f\n", a,b, ks1[0],ks2[0],ks3[0]);
+            fprintf(stderr,"ab updated. a:%d,b:%d,ks1:%f,ks2:%f,ks3:%f\n", a,b, ks1[0],ks2[0],ks3[0]);
           }
           
         }
@@ -1144,7 +1162,7 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
           ks1[3] = ab_Zmax[2];
           ks2[3] = ab_Zmax[2];
           ks3[3] = ab_Zmax[2];
-          // fprintf(stderr,"ab Z-updated. a:%d,b:%d,ks1:%f,ks2:%f,ks3:%f\n", a,b, ks1[0],ks2[0],ks3[0]);
+          fprintf(stderr,"ab Z-updated. a:%d,b:%d,ks1:%f,ks2:%f,ks3:%f\n", a,b, ks1[0],ks2[0],ks3[0]);
         }
         // fprintf(stderr,"ab:%d,%d",ab[0] ,ab[1] );
                 // re-calculate the KS for all subsegments
@@ -1156,7 +1174,7 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
           //check the left side of the maximum interval with ks
           n=a; m=ab[0]-1;
           if(ab[0] > 0 && m-n+1 >= nfo->mincpgs 
-              && calcSingleTrendAbs(XS[gn],a,ab[0]-1) > nfo->trend 
+              && calcSingleTrendAbs(XS,gn,a,ab[0]-1) > nfo->trend 
               && noValley(XS[gn], a, ab[0]-1, nfo)) {
 
             kstest(seg, a, ab[0]-1, 0, 1, 1, ks1_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
@@ -1165,7 +1183,7 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
           //check the maximum interval interval with ks
           n=ab[0];m=ab[1];
           if(m-n+1 >= nfo->mincpgs 
-              && calcSingleTrendAbs(XS[gn],ab[0],ab[1]) > nfo->trend 
+              && calcSingleTrendAbs(XS,gn,ab[0],ab[1]) > nfo->trend 
               && noValley(XS[gn], ab[0], ab[1], nfo) ) {
 
             kstest(seg, ab[0], ab[1], 0, 1, 1, ks2_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
@@ -1174,7 +1192,7 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
           //check the right side of the maximum interval with ks
           n=ab[1]+1;m=b;
           if(m-n+1 >= nfo->mincpgs 
-              && calcSingleTrendAbs(XS[gn],ab[1]+1,b)> nfo->trend 
+              && calcSingleTrendAbs(XS,gn,ab[1]+1,b)> nfo->trend 
               && noValley(XS[gn], ab[1]+1, b, nfo)) {
             kstest(seg, ab[1]+1, b, 0, 1, 1, ks3_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
           }
@@ -1206,7 +1224,7 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
             ks3[3] = gn;
           }
         }
-        // fprintf(stderr,"Final: a:%d,b:%d,ks1:%f,ks2:%f,ks3:%f\n", a,b, ks1[0],ks2[0],ks3[0]);
+        fprintf(stderr,"Final: a:%d,b:%d,ks1:%f,ks2:%f,ks3:%f\n", a,b, ks1[0],ks2[0],ks3[0]);
       }
 
       //if one of the children has a good ks we check all
@@ -1231,11 +1249,11 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
               child = 0;
               ab[0] = -1; // zzhu$ ab[0]==-1 means ab to be calculated.
             } else { 
-              // for(int gn=0;gn<groupNumber;gn++){
-              //     double ks4tmp[] = {2,0,2};
-              //     kstest(seg, n, m, 0, 1, 1, ks4tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
-              //     fprintf(stderr,"left: a%d,b%d,ks%f\tgroup%d,ks%f\n", a, b, ks1[0], gn, ks4tmp[0]);
-              // }
+              for(int gn=0;gn<groupNumber;gn++){
+                  double ks4tmp[] = {2,0,2};
+                  kstest(seg, n, m, 0, 1, 1, ks4tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
+                  fprintf(stderr,"left: a%d,b%d,ks%f\tgroup%d,ks%f\n", a, b, ks1[0], gn, ks4tmp[0]);
+              }
               breaks = ALLOCMEMORY(NULL, breaks, segment_t, (*nbreaks)+1);
               setSegment(&breaks[(*nbreaks)], seg->chr, n, m, ks1[0], ks1[1], ks1[2], ks1[3]);
               (*nbreaks)+=1;
@@ -1256,11 +1274,11 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
               child = 0;
               ab[0] =-1;
             } else {
-              // for(int gn=0;gn<groupNumber;gn++){
-              //     double ks4tmp[] = {2,0,2};
-              //     kstest(seg, n, m, 0, 1, 1, ks4tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
-              //     fprintf(stderr,"middle: a%d,b%d,ks%f\tgroup%d,ks%f\n", a, b, ks2[0], gn, ks4tmp[0]);
-              // }
+              for(int gn=0;gn<groupNumber;gn++){
+                  double ks4tmp[] = {2,0,2};
+                  kstest(seg, n, m, 0, 1, 1, ks4tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
+                  fprintf(stderr,"middle: a%d,b%d,ks%f\tgroup%d,ks%f\n", a, b, ks2[0], gn, ks4tmp[0]);
+              }
               breaks = ALLOCMEMORY(NULL, breaks, segment_t, (*nbreaks)+1);
               setSegment(&breaks[(*nbreaks)], seg->chr, n, m, ks2[0], ks2[1], ks2[2], ks2[3]);
               (*nbreaks)+=1;
@@ -1281,11 +1299,11 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
               child = 0;
               ab[0] = -1;
             } else {
-              // for(int gn=0;gn<groupNumber;gn++){
-              //     double ks4tmp[] = {2,0,2};
-              //     kstest(seg, n, m, 0, 1, 1, ks4tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
-              //     fprintf(stderr,"right: a%d,b%d,ks%f\tgroup%d,ks%f\n", a, b, ks3[0], gn, ks4tmp[0]);
-              // }
+              for(int gn=0;gn<groupNumber;gn++){
+                  double ks4tmp[] = {2,0,2};
+                  kstest(seg, n, m, 0, 1, 1, ks4tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
+                  fprintf(stderr,"right: a%d,b%d,ks%f\tgroup%d,ks%f\n", a, b, ks3[0], gn, ks4tmp[0]);
+              }
               breaks = ALLOCMEMORY(NULL, breaks, segment_t, (*nbreaks)+1);
               setSegment(&breaks[(*nbreaks)], seg->chr, n, m, ks3[0], ks3[1], ks3[2], ks3[3]);
               (*nbreaks)+=1;
@@ -1294,13 +1312,13 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
         }
       } else {
         if(child ==0) { 
-          // for(int gn=0;gn<groupNumber;gn++){
-          //   double ks4tmp[] = {2,0,2};
-          //   kstest(seg, a, b, 0, 1, 1, ks4tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
-          //   // calcSingleTrendAbs(XS[gn],a,ab[0]-1) > nfo->trend 
-          //   //   && noValley(XS[gn], a, ab[0]-1, nfo)
-          //   fprintf(stderr,"KS. a%d,b%d,ks%f\tgroup%d,ks%f,trend%f,novally%d\n", a, b, KS[0], gn, ks4tmp[0],calcSingleTrendAbs(XS[gn],a,b),noValley(XS[gn], a, b, nfo));
-          // }
+          for(int gn=0;gn<groupNumber;gn++){
+            double ks4tmp[] = {2,0,2};
+            kstest(seg, a, b, 0, 1, 1, ks4tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
+            // calcSingleTrendAbs(XS,gn,a,ab[0]-1) > nfo->trend 
+            //   && noValley(XS[gn], a, ab[0]-1, nfo)
+            fprintf(stderr,"KS. a%d,b%d,ks%f\tgroup%d,ks%f,trend%f,novally%d\n", a, b, KS[0], gn, ks4tmp[0],calcSingleTrendAbs(XS,gn,a,b),noValley(XS[gn], a, b, nfo));
+          }
           // assert((a!=15)||(b!=26));
           
           breaks = ALLOCMEMORY(NULL, breaks, segment_t, (*nbreaks)+1);
@@ -1375,7 +1393,7 @@ segmenterSTK(segment_t *seg, segment_t *globalbreaks, int *nglobal, double ***XS
         double ks_tmp[] = {2,0,2};
         for (int gn = 0; gn < groupNumber; gn++)
         {
-          trend[gn] = calcSingleTrendAbs(XS[gn], n, m);
+          trend[gn] = calcSingleTrendAbs(XS,gn, n, m);
           if(m-n+1 >= nfo->mincpgs && trend[gn] > nfo->trend && noValley(XS[gn], n, m, nfo)) { 
             kstest(seg, n, m, 0, 1, 1, ks_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
             if (ks_tmp[0]<ks[0])
@@ -1418,7 +1436,7 @@ segmenterSTK(segment_t *seg, segment_t *globalbreaks, int *nglobal, double ***XS
         double ks_tmp[] = {2,0,2};
         for (int gn = 0; gn < groupNumber; gn++)
         {
-          trend[gn] = calcSingleTrendAbs(XS[gn], n, m);
+          trend[gn] = calcSingleTrendAbs(XS,gn, n, m);
           if(m-n+1 >= nfo->mincpgs && trend[gn] > nfo->trend && noValley(XS[gn], n, m, nfo)) { 
             kstest(seg, n, m, 0, 1, 1, ks_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
             if (ks_tmp[0]<ks[0])
@@ -1518,7 +1536,7 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
         double ks[] = {2,0,2,-1}; // ks:best ks pval. {ks p, meandiff, ranksums p, group with min p}
         double ks_tmp[] = {2,0,2};
         for(int gn=0; gn<groupNumber; gn++){
-          trend = calcSingleTrendAbs(XS[gn],tmp->start,tmp->stop);
+          trend = calcSingleTrendAbs(XS,gn,tmp->start,tmp->stop);
           if(tmp->stop-tmp->start + 1 >= nfo->mincpgs && trend>nfo->trend 
               && noValley(XS[gn], tmp->start, tmp->stop, nfo)) {
 
@@ -1623,7 +1641,7 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
     double ks[] = {2,0,2,-1}; // ks:best ks pval. {ks p, meandiff, ranksums p, group with min p}
     double ks_tmp[] = {2,0,2};
     for(int gn=0; gn<groupNumber; gn++){
-      trend = calcSingleTrendAbs(XS[gn],tmp->start,tmp->stop);
+      trend = calcSingleTrendAbs(XS,gn,tmp->start,tmp->stop);
       if(tmp->stop-tmp->start + 1 >= nfo->mincpgs && trend>nfo->trend 
           && noValley(XS[gn], tmp->start, tmp->stop, nfo)) {
 
@@ -1726,7 +1744,7 @@ segmentation(char **chr, int *pos, double **value, int n,
   S = calcSingleDiffSum(seg, groupID, groupSize, groupNumber);
   for (int gn = 0; gn < groupNumber; gn++)
   {
-    trend[gn] = calcSingleTrendAbs(S[gn], 0, n-1);
+    trend[gn] = calcSingleTrendAbs(S, gn, 0, n-1);
     novalley[gn] = noValley(S[gn], 0, n-1, nfo);
     if(seg->n-1 >= nfo->mincpgs && trend[gn] > nfo->trend && novalley[gn]) { // should be seg->n >= mincpg???
       kstest(seg , 0, n-1, 0, 1, 1, ks_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
