@@ -1,0 +1,58 @@
+HOWTO
+
+This file demonstrates the usage of the DMR simulation scripts. It requires a recent R installation as well as the 
+bedtools intersect and groupby application.
+
+## chromatin annotation
+# WGBS and RRBS positions for chromsome 10
+ls chromatin_annotation_chr10.txt
+ls positions_RRBS.txt
+
+
+## WGBS
+# simulate for chr10 number of methylation rates and coverages for 20 input files
+# two Beta distributions used in publication: (alpha: 40 and beta: 3) or (alpha: 15 and beta: 5)
+# usage: simulate_background.R alpha beta chromatin_annotation_chr10.txt
+# e.g. alpha: 40 and beta: 3
+for i in {1..20}; do
+	Rscript simulate_background.R 40 3 chromatin_annotation_chr10.txt > sample_$i.txt;
+done
+
+# simulate 1000 DMRs on background
+# 4 DMR classes for each background, mixture factors c used in publication: 1, 0.87, 0.73, 0.6
+# two beta distributions used in publication: (alpha: 40 and beta: 3) or (alpha: 15 and beta: 5)
+# background files need to be named sample_<number>.txt
+# output are inpute files for BSmooth and metilene
+# usage: simulate_DMRs_WGBS.R alpha beta c path_to_background path_for_output
+# e.g. alpha: 40 and beta: 3, mixture factor c: 1, background in folder bg and write output to folder outputpath
+Rscript simulate_DMRs_WGBS.R 40 3 1 bg/ outputpath/
+
+# get MOABS input from BSmooth input
+for i in *.bsmooth; do
+	o=`basename $i | sed 's/.bsmooth$/.moabs/'`;
+	less $i | perl -ane 'if($F[2]eq"+"){$s=$F[1]-1; $e=$F[1]+1; print "chr$F[0]\t$s\t$e\t$F[2]\t$F[3]\t$F[4]\t$F[5]\n"}else{$s=$F[1]-2; $e=$F[1]; print "chr$F[0]\t$s\t$e\t$F[2]\t$F[3]\t$F[4]\t$F[5]\n"}' | groupBy -g 1,2,3 -c 4,5,6,7 -o collapse,collapse,collapse,collapse | perl -ane '@m=split(/,/,$F[5]); @c=split(/,/,$F[6]); if($F[3] eq"+"){$s="+"; $cp=$c[0]; $mp=$m[0];	$cm=0; $mm=0; $cs=$cp; $ms=$mp; $r=$mp/$cp;}elsif($F[3] eq"-"){$s="-"; $cp=0; $mp=0; $cm=$c[0]; $mm=$m[0]; $cs=$cm; $ms=$mm; $r=$mm/$cm;}else{$s="B"; $cp=$c[0]; $mp=$m[0]; $cm=$c[1]; $mm=$m[1]; $cs=$cp+$cm; $ms=$mp+$mm; $r=$ms/$cs;}; print "$F[0]\t$F[1]\t$F[2]\t$r\t$cs\t$ms\t$s\tG\t+\t$cp\t$mp\t-\t$cm\t$mm\n"' >$o
+done
+
+
+## RRBS
+# reduce 20 background files to RRBS positions
+# WBGS chr10 inpute files are in path
+# output to path_new
+for i in {1..20}; do
+	bedtools intersect -u -a path/sample_$i.txt -b positions_RRBS.txt > path_new/sample_$i.txt
+done
+
+# simulate 200 DMRs on background
+# 4 DMR classes for each background, mixture factors c used in publication: 1, 0.87, 0.73, 0.6
+# two Beta distributions used in publication: (alpha: 40 and beta: 3) or (alpha: 15 and beta: 5)
+# background files need to be named sample_<number>.txt
+# output are inpute files for BSmooth and metilene
+# usage: simulate_DMRs_RRBS.R alpha beta c path_to_background path_for_output
+# e.g. alpha: 40 and beta: 3, mixture factor c: 1, background in folder bg and write output to folder outputpath
+Rscript simulate_DMRs_RRBS.R 40 3 1 bg/ outputpath/
+
+# get MOABS input from BSmooth input
+for i in *.bsmooth; do
+	o=`basename $i | sed 's/.bsmooth$/.moabs/'`;
+	less $i | perl -ane 'if($F[2]eq"+"){$s=$F[1]-1; $e=$F[1]+1; print "chr$F[0]\t$s\t$e\t$F[2]\t$F[3]\t$F[4]\t$F[5]\n"}else{$s=$F[1]-2; $e=$F[1]; print "chr$F[0]\t$s\t$e\t$F[2]\t$F[3]\t$F[4]\t$F[5]\n"}' | groupBy -g 1,2,3 -c 4,5,6,7 -o collapse,collapse,collapse,collapse | perl -ane '@m=split(/,/,$F[5]); @c=split(/,/,$F[6]); if($F[3] eq"+"){$s="+"; $cp=$c[0]; $mp=$m[0];	$cm=0; $mm=0; $cs=$cp; $ms=$mp; $r=$mp/$cp;}elsif($F[3] eq"-"){$s="-"; $cp=0; $mp=0; $cm=$c[0]; $mm=$m[0]; $cs=$cm; $ms=$mm; $r=$mm/$cm;}else{$s="B"; $cp=$c[0]; $mp=$m[0]; $cm=$c[1]; $mm=$m[1]; $cs=$cp+$cm; $ms=$mp+$mm; $r=$ms/$cs;}; print "$F[0]\t$F[1]\t$F[2]\t$r\t$cs\t$ms\t$s\tG\t+\t$cp\t$mp\t-\t$cm\t$mm\n"' >$o
+done
