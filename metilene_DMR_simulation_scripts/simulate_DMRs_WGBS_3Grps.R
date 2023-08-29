@@ -9,8 +9,8 @@ min.length <- 15
 max.length <- 50
 region.min.length <- 70
 
-shape.1 <- args[1]
-shape.2 <- args[2]
+shape.1 <- as.numeric(args[1])
+shape.2 <- as.numeric(args[2])
 shape.ratio <- as.numeric(args[3])
 
 d.bg <- 500
