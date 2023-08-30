@@ -117,7 +117,7 @@ DMR.bg <- do.call(rbind.fill, lapply(1:d.bg, function(i){
 
   ## down-regulation
   if (j%%2 == 1){
-    if (j%%10 == 0) {
+    if (j%%5 == 0) {
       mean.BL <- c(rbeta(length(data.methyl.BL), shape.1, shape.2)*shape.ratio+rbeta(length(data.methyl.BL), shape.2, shape.1)*(1-shape.ratio))
       mean.FL <- c(rbeta(length(data.methyl.FL), shape.2, shape.1)*shape.ratio+rbeta(length(data.methyl.FL), shape.1, shape.2)*(1-shape.ratio))
       mean.TL <- c(rbeta(length(data.methyl.TL), shape.1, shape.2)*shape.ratio+rbeta(length(data.methyl.TL), shape.2, shape.1)*(1-shape.ratio))
@@ -137,13 +137,13 @@ DMR.bg <- do.call(rbind.fill, lapply(1:d.bg, function(i){
   }
   ## up-regulation
   else {
-    if (j%%5 == 0) {
+    if (j%%10 == 0) {
       mean.BL <- c(rbeta(length(data.methyl.BL), shape.2, shape.1)*shape.ratio+rbeta(length(data.methyl.BL), shape.1, shape.2)*(1-shape.ratio))
-      mean.FL <- c(rbeta(length(data.methyl.FL), shape.1, shape.2)*shape.ratio+rbeta(length(data.methyl.FL), shape.2, shape.1)*(1-shape.ratio))
-      mean.TL <- c(rbeta(length(data.methyl.TL), shape.2, shape.1)*shape.ratio+rbeta(length(data.methyl.TL), shape.1, shape.2)*(1-shape.ratio)) 
+      mean.FL <- c(rbeta(length(data.methyl.FL), shape.2, shape.1)*shape.ratio+rbeta(length(data.methyl.FL), shape.1, shape.2)*(1-shape.ratio))
+      mean.TL <- c(rbeta(length(data.methyl.TL), shape.1, shape.2)*shape.ratio+rbeta(length(data.methyl.TL), shape.2, shape.1)*(1-shape.ratio)) 
       ## store true methylation difference
-      entry$diff <- mean(mean.FL)-((mean(mean.BL)+mean(mean.TL))/2)
-      entry$comparison <- "FL-(BL,TL)"
+      entry$diff <- mean(mean.TL)-((mean(mean.BL)+mean(mean.FL))/2)
+      entry$comparison <- "TL-(BL,FL)"
     } 
     else {
       mean.BL <- c(rbeta(length(data.methyl.BL), shape.2, shape.1)*shape.ratio+rbeta(length(data.methyl.BL), shape.1, shape.2)*(1-shape.ratio))
@@ -209,7 +209,7 @@ DMR.fg <- do.call(rbind.fill, lapply(1:d.fg, function(i){
 
   ## down-regulation
   if (j%%2 == 1){
-    if (j%%10 == 0) {
+    if (j%%5 == 0) {
       mean.BL <- c(rbeta(length(data.methyl.BL), shape.1, shape.2)*shape.ratio+rbeta(length(data.methyl.BL), shape.2, shape.1)*(1-shape.ratio))
       mean.FL <- c(rbeta(length(data.methyl.FL), shape.2, shape.1)*shape.ratio+rbeta(length(data.methyl.FL), shape.1, shape.2)*(1-shape.ratio))
       mean.TL <- c(rbeta(length(data.methyl.TL), shape.1, shape.2)*shape.ratio+rbeta(length(data.methyl.TL), shape.2, shape.1)*(1-shape.ratio))
@@ -229,13 +229,13 @@ DMR.fg <- do.call(rbind.fill, lapply(1:d.fg, function(i){
   }
   ## up-regulation
   else {
-    if (j%%5 == 0) {
+    if (j%%10 == 0) {
       mean.BL <- c(rbeta(length(data.methyl.BL), shape.2, shape.1)*shape.ratio+rbeta(length(data.methyl.BL), shape.1, shape.2)*(1-shape.ratio))
-      mean.FL <- c(rbeta(length(data.methyl.FL), shape.1, shape.2)*shape.ratio+rbeta(length(data.methyl.FL), shape.2, shape.1)*(1-shape.ratio)) 
-      mean.TL <- c(rbeta(length(data.methyl.TL), shape.2, shape.1)*shape.ratio+rbeta(length(data.methyl.TL), shape.1, shape.2)*(1-shape.ratio))
+      mean.FL <- c(rbeta(length(data.methyl.FL), shape.2, shape.1)*shape.ratio+rbeta(length(data.methyl.FL), shape.1, shape.2)*(1-shape.ratio)) 
+      mean.TL <- c(rbeta(length(data.methyl.TL), shape.1, shape.2)*shape.ratio+rbeta(length(data.methyl.TL), shape.2, shape.1)*(1-shape.ratio))
       ## store true methylation difference
-      entry$diff <- mean(mean.FL)-((mean(mean.BL)+mean(mean.TL))/2)
-      entry$comparison <- "FL-(BL,TL)"
+      entry$diff <- mean(mean.TL)-((mean(mean.BL)+mean(mean.FL))/2)
+      entry$comparison <- "TL-(BL,FL)"
     }
     else {
       mean.BL <- c(rbeta(length(data.methyl.BL), shape.2, shape.1)*shape.ratio+rbeta(length(data.methyl.BL), shape.1, shape.2)*(1-shape.ratio))
@@ -268,9 +268,9 @@ DMR.fg <- do.call(rbind.fill, lapply(1:d.fg, function(i){
 }))
 
 
-names <- c("BL01","BL02","BL03","BL04","BL05","BL06","BL07","BL08","BL09","BL10",
-           "FL01","FL02","FL03","FL04","FL05","FL06","FL07","FL08","FL09","FL10",
-           "TL01","TL02","TL03","TL04","TL05","TL06","TL07","TL08","TL09","TL10")
+names <- c("0_BL01","0_BL02","0_BL03","0_BL04","0_BL05","0_BL06","0_BL07","0_BL08","0_BL09","0_BL10",
+           "1_FL01","1_FL02","1_FL03","1_FL04","1_FL05","1_FL06","1_FL07","1_FL08","1_FL09","1_FL10",
+           "2_TL01","2_TL02","2_TL03","2_TL04","2_TL05","2_TL06","2_TL07","2_TL08","2_TL09","2_TL10")
 
 # BSmooth
 j <- 1
