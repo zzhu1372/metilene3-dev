@@ -138,18 +138,22 @@ typedef struct{
   double ks11;
   double ks12;
   double ks13;
+  double ks14;
   
   double ks21;
   double ks22;
   double ks23;
+  double ks24;
   
   double ks31;
   double ks32;
   double ks33;
+  double ks34;
 
   double KS1;
   double KS2;
   double KS3;
+  double KS4;
 
 } segment_p_t;
 

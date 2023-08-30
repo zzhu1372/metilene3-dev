@@ -895,18 +895,22 @@ pushSegment_p (Segmentstack *stack, int a, int b, int *ab, int child,
     segment.ks11 =ks1[0];
     segment.ks12 =ks1[1];
     segment.ks13 =ks1[2];
+    segment.ks14 =ks1[3];
  
     segment.ks21 =ks2[0];
     segment.ks22 =ks2[1];
     segment.ks23 =ks2[2];
+    segment.ks24 =ks2[3];
 
     segment.ks31 =ks3[0];
     segment.ks32 =ks3[1];
     segment.ks33 =ks3[2];
+    segment.ks34 =ks3[3];
 
     segment.KS1 =KS[0];
     segment.KS2 =KS[1];
     segment.KS3 =KS[2];
+    segment.KS4 =KS[3]; 
     }
     if(max) { 
       segment_t *copy = ALLOCMEMORY(NULL, NULL, segment_t, 1);
@@ -945,18 +949,22 @@ popSegment_p (Segmentstack *stack, int *a, int *b, int *ab, int *child,
     ks1[0] = segment->ks11;
     ks1[1] = segment->ks12;
     ks1[2] = segment->ks13;
+    ks1[3] = segment->ks14;
 
     ks2[0] = segment->ks21;
     ks2[1] = segment->ks22;
     ks2[2] = segment->ks23;
+    ks2[3] = segment->ks24;
 
     ks3[0] = segment->ks31;
     ks3[1] = segment->ks32;
     ks3[2] = segment->ks33;
+    ks3[3] = segment->ks34;
 
     KS[0] = segment->KS1;
     KS[1] = segment->KS2;
     KS[2] = segment->KS3;
+    KS[3] = segment->KS4;
   }
 
   if(max) { 
