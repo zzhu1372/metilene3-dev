@@ -1,8 +1,8 @@
 ## check for input characters
 args <- commandArgs(trailingOnly = TRUE)
 
-if (length(args) != 3){
-  stop("3 input parameters required: beta.shape1 beta.shape2 chromatin_annotation_chr10.txt")
+if (length(args) != 4){
+  stop("4 input parameters required: beta.shape1 beta.shape2 chromatin_annotation_chr10.txt")
 }
 
 ## global options
@@ -21,6 +21,7 @@ smoothing.weight <- 0.5
 data <- read.table(as.character(args[3]), stringsAsFactors=FALSE, col.names=c("chr", "pos", "strand", "dinucleotide", "chromatin.state"))
 
 ## init columns
+set.seed(as.numeric(args[4]))
 data$meth <- 0
 data$cov <- 0
 data$meth.rates <- -1
