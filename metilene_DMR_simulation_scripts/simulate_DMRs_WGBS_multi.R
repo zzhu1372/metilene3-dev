@@ -482,7 +482,7 @@ DMR.fg <- do.call(rbind.fill, lapply(1:d.fg, function(i){
 names <- c()
 for (gn in groupNames) {
   for (j in c(1:groupSizes[[gn]])) {
-    names <- c(names,paste(gn,groupIDs[[gn]][j],sep='_'))
+    names <- c(names,paste(gn,strsplit(strsplit(groupIDs[[gn]][j],split='ample_')[[1]][2],split='.txt')[[1]][1],sep='_s'))
   }
 }
 names
@@ -511,7 +511,7 @@ for (gn in groupNames) {
 data <- data[,c(1,2,k:(j-1))]
 colnames(data)[3:ncol(data)] <- names
 data$chr <- paste("chr", data$chr, sep="")
-write.table(file=paste0("beta.", shape.1, ".", shape.2, "_ratio.", shape.ratio, ".metilene"), format(data, scientific=F, trim=T), col.names=T, row.names=F, sep="\t", quote=F)
+write.table(file=paste0("beta.", shape.1, ".", shape.2, "_ratio.", shape.ratio, ".metilene"), format(data, scientific=F, trim=T, digits=2), col.names=T, row.names=F, sep="\t", quote=F)
 
 # annotation DMRs
 DMR.bg$promoter <- 0
@@ -520,7 +520,6 @@ DMR.bg$chr <- paste("chr", DMR.bg$chr, sep="")
 DMR.fg$chr <- paste("chr", DMR.fg$chr, sep="")
 write.table(file=paste0("DMR_annotation_beta.", shape.1, ".", shape.2, "_ratio.", shape.ratio, ".bed"), format(DMR.bg, scientific=F, trim=T), col.names=F, row.names=F, sep="\t", quote=F)
 write.table(file=paste0("DMR_annotation_beta.", shape.1, ".", shape.2, "_ratio.", shape.ratio, ".bed"), format(DMR.fg, scientific=F, trim=T), col.names=F, row.names=F, sep="\t", quote=F, append=T)
-
 
 
 
