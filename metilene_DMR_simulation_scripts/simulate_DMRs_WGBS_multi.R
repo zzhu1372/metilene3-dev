@@ -27,17 +27,17 @@ groupNames.L1B = c('3','4')
 
 groupSizes = hash()
 groupIDs = hash()
-groupSizes[['0']] = 3
-groupSizes[['1']] = 3
-groupSizes[['2']] = 3
-groupSizes[['3']] = 3
-groupSizes[['4']] = 3
+groupSizes[['0']] = 10
+groupSizes[['1']] = 10
+groupSizes[['2']] = 10
+groupSizes[['3']] = 10
+groupSizes[['4']] = 10
 for (gn in c(1:length(groupNames))) {
   groupIDs[[groupNames[gn]]] = c()
 }
 
 #### simulate chr10 ####
-setwd("/Users/zzhu/Documents/research/metilene/metilene2_vscode/metilene_DMR_simulation_scripts/bg_N10/")
+setwd("/Users/zzhu/Documents/research/metilene/metilene2_vscode/metilene_DMR_simulation_scripts/bg_N50/")
 files = list.files(pattern = "^sample")
 files
 i = 1
@@ -201,7 +201,11 @@ DMR.bg <- do.call(rbind.fill, lapply(1:d.bg, function(i){
         mean.groups[[gn_cmp21]] <- c(rbeta(length(data.methyl[[gn_cmp21]]), shape.2, shape.1)*shape.ratio+rbeta(length(data.methyl[[gn_cmp21]]), shape.1, shape.2)*(1-shape.ratio))
         mean.groups[[gn_cmp22]] <- c(rbeta(length(data.methyl[[gn_cmp22]]), shape.2, shape.1)*shape.ratio+rbeta(length(data.methyl[[gn_cmp22]]), shape.1, shape.2)*(1-shape.ratio))
         if ((gn!=gn_cmp1)&&(gn!=gn_cmp21)&&(gn!=gn_cmp22)){
-          mean.groups[[gn]] <- c(rbeta(length(data.methyl[[gn]]), shape.4, shape.3)*shape.ratio+rbeta(length(data.methyl[[gn]]), shape.3, shape.4)*(1-shape.ratio))
+          if ((j%%4)/2 >= 1){
+            mean.groups[[gn]] <- c(rbeta(length(data.methyl[[gn]]), shape.4, shape.3)*shape.ratio+rbeta(length(data.methyl[[gn]]), shape.3, shape.4)*(1-shape.ratio))
+          } else {
+            mean.groups[[gn]] <- c(rbeta(length(data.methyl[[gn]]), shape.3, shape.4)*shape.ratio+rbeta(length(data.methyl[[gn]]), shape.4, shape.3)*(1-shape.ratio))
+          }
         }
       }
     }
@@ -212,7 +216,11 @@ DMR.bg <- do.call(rbind.fill, lapply(1:d.bg, function(i){
         mean.groups[[gn_cmp21]] <- c(rbeta(length(data.methyl[[gn_cmp21]]), shape.1, shape.2)*shape.ratio+rbeta(length(data.methyl[[gn_cmp21]]), shape.2, shape.1)*(1-shape.ratio))
         mean.groups[[gn_cmp22]] <- c(rbeta(length(data.methyl[[gn_cmp22]]), shape.1, shape.2)*shape.ratio+rbeta(length(data.methyl[[gn_cmp22]]), shape.2, shape.1)*(1-shape.ratio))
         if ((gn!=gn_cmp1)&&(gn!=gn_cmp21)&&(gn!=gn_cmp22)){
-          mean.groups[[gn]] <- c(rbeta(length(data.methyl[[gn]]), shape.3, shape.4)*shape.ratio+rbeta(length(data.methyl[[gn]]), shape.4, shape.3)*(1-shape.ratio))
+          if ((j%%4)/2 >= 1){
+            mean.groups[[gn]] <- c(rbeta(length(data.methyl[[gn]]), shape.4, shape.3)*shape.ratio+rbeta(length(data.methyl[[gn]]), shape.3, shape.4)*(1-shape.ratio))
+          } else {
+            mean.groups[[gn]] <- c(rbeta(length(data.methyl[[gn]]), shape.3, shape.4)*shape.ratio+rbeta(length(data.methyl[[gn]]), shape.4, shape.3)*(1-shape.ratio))
+          }
         }
       }
     }
@@ -230,7 +238,11 @@ DMR.bg <- do.call(rbind.fill, lapply(1:d.bg, function(i){
         mean.groups[[gn_cmp1]] <- c(rbeta(length(data.methyl[[gn_cmp1]]), shape.1, shape.2)*shape.ratio+rbeta(length(data.methyl[[gn_cmp1]]), shape.2, shape.1)*(1-shape.ratio))
         mean.groups[[gn_cmp2]] <- c(rbeta(length(data.methyl[[gn_cmp2]]), shape.2, shape.1)*shape.ratio+rbeta(length(data.methyl[[gn_cmp2]]), shape.1, shape.2)*(1-shape.ratio))
         if ((gn!=gn_cmp1)&&(gn!=gn_cmp2)){
-          mean.groups[[gn]] <- c(rbeta(length(data.methyl[[gn]]), shape.4, shape.3)*shape.ratio+rbeta(length(data.methyl[[gn]]), shape.3, shape.4)*(1-shape.ratio))
+          if ((j%%4)/2 >= 1){
+            mean.groups[[gn]] <- c(rbeta(length(data.methyl[[gn]]), shape.4, shape.3)*shape.ratio+rbeta(length(data.methyl[[gn]]), shape.3, shape.4)*(1-shape.ratio))
+          } else {
+            mean.groups[[gn]] <- c(rbeta(length(data.methyl[[gn]]), shape.3, shape.4)*shape.ratio+rbeta(length(data.methyl[[gn]]), shape.4, shape.3)*(1-shape.ratio))
+          }
         }
       }
     }
@@ -240,7 +252,11 @@ DMR.bg <- do.call(rbind.fill, lapply(1:d.bg, function(i){
         mean.groups[[gn_cmp1]] <- c(rbeta(length(data.methyl[[gn_cmp1]]), shape.2, shape.1)*shape.ratio+rbeta(length(data.methyl[[gn_cmp1]]), shape.1, shape.2)*(1-shape.ratio))
         mean.groups[[gn_cmp2]] <- c(rbeta(length(data.methyl[[gn_cmp2]]), shape.1, shape.2)*shape.ratio+rbeta(length(data.methyl[[gn_cmp2]]), shape.2, shape.1)*(1-shape.ratio))
         if ((gn!=gn_cmp1)&&(gn!=gn_cmp2)){
-          mean.groups[[gn]] <- c(rbeta(length(data.methyl[[gn]]), shape.3, shape.4)*shape.ratio+rbeta(length(data.methyl[[gn]]), shape.4, shape.3)*(1-shape.ratio))
+          if ((j%%4)/2 >= 1){
+            mean.groups[[gn]] <- c(rbeta(length(data.methyl[[gn]]), shape.4, shape.3)*shape.ratio+rbeta(length(data.methyl[[gn]]), shape.3, shape.4)*(1-shape.ratio))
+          } else {
+            mean.groups[[gn]] <- c(rbeta(length(data.methyl[[gn]]), shape.3, shape.4)*shape.ratio+rbeta(length(data.methyl[[gn]]), shape.4, shape.3)*(1-shape.ratio))
+          }
         }
       }
     }
@@ -377,7 +393,11 @@ DMR.fg <- do.call(rbind.fill, lapply(1:d.fg, function(i){
         mean.groups[[gn_cmp21]] <- c(rbeta(length(data.methyl[[gn_cmp21]]), shape.2, shape.1)*shape.ratio+rbeta(length(data.methyl[[gn_cmp21]]), shape.1, shape.2)*(1-shape.ratio))
         mean.groups[[gn_cmp22]] <- c(rbeta(length(data.methyl[[gn_cmp22]]), shape.2, shape.1)*shape.ratio+rbeta(length(data.methyl[[gn_cmp22]]), shape.1, shape.2)*(1-shape.ratio))
         if ((gn!=gn_cmp1)&&(gn!=gn_cmp21)&&(gn!=gn_cmp22)){
-          mean.groups[[gn]] <- c(rbeta(length(data.methyl[[gn]]), shape.4, shape.3)*shape.ratio+rbeta(length(data.methyl[[gn]]), shape.3, shape.4)*(1-shape.ratio))
+          if ((j%%4)/2 >= 1){
+            mean.groups[[gn]] <- c(rbeta(length(data.methyl[[gn]]), shape.4, shape.3)*shape.ratio+rbeta(length(data.methyl[[gn]]), shape.3, shape.4)*(1-shape.ratio))
+          } else {
+            mean.groups[[gn]] <- c(rbeta(length(data.methyl[[gn]]), shape.3, shape.4)*shape.ratio+rbeta(length(data.methyl[[gn]]), shape.4, shape.3)*(1-shape.ratio))
+          }
         }
       }
     }
@@ -388,7 +408,11 @@ DMR.fg <- do.call(rbind.fill, lapply(1:d.fg, function(i){
         mean.groups[[gn_cmp21]] <- c(rbeta(length(data.methyl[[gn_cmp21]]), shape.1, shape.2)*shape.ratio+rbeta(length(data.methyl[[gn_cmp21]]), shape.2, shape.1)*(1-shape.ratio))
         mean.groups[[gn_cmp22]] <- c(rbeta(length(data.methyl[[gn_cmp22]]), shape.1, shape.2)*shape.ratio+rbeta(length(data.methyl[[gn_cmp22]]), shape.2, shape.1)*(1-shape.ratio))
         if ((gn!=gn_cmp1)&&(gn!=gn_cmp21)&&(gn!=gn_cmp22)){
-          mean.groups[[gn]] <- c(rbeta(length(data.methyl[[gn]]), shape.3, shape.4)*shape.ratio+rbeta(length(data.methyl[[gn]]), shape.4, shape.3)*(1-shape.ratio))
+          if ((j%%4)/2 >= 1){
+            mean.groups[[gn]] <- c(rbeta(length(data.methyl[[gn]]), shape.4, shape.3)*shape.ratio+rbeta(length(data.methyl[[gn]]), shape.3, shape.4)*(1-shape.ratio))
+          } else {
+            mean.groups[[gn]] <- c(rbeta(length(data.methyl[[gn]]), shape.3, shape.4)*shape.ratio+rbeta(length(data.methyl[[gn]]), shape.4, shape.3)*(1-shape.ratio))
+          }
         }
       }
     }
@@ -406,7 +430,11 @@ DMR.fg <- do.call(rbind.fill, lapply(1:d.fg, function(i){
         mean.groups[[gn_cmp1]] <- c(rbeta(length(data.methyl[[gn_cmp1]]), shape.1, shape.2)*shape.ratio+rbeta(length(data.methyl[[gn_cmp1]]), shape.2, shape.1)*(1-shape.ratio))
         mean.groups[[gn_cmp2]] <- c(rbeta(length(data.methyl[[gn_cmp2]]), shape.2, shape.1)*shape.ratio+rbeta(length(data.methyl[[gn_cmp2]]), shape.1, shape.2)*(1-shape.ratio))
         if ((gn!=gn_cmp1)&&(gn!=gn_cmp2)){
-          mean.groups[[gn]] <- c(rbeta(length(data.methyl[[gn]]), shape.4, shape.3)*shape.ratio+rbeta(length(data.methyl[[gn]]), shape.3, shape.4)*(1-shape.ratio))
+          if ((j%%4)/2 >= 1){
+            mean.groups[[gn]] <- c(rbeta(length(data.methyl[[gn]]), shape.4, shape.3)*shape.ratio+rbeta(length(data.methyl[[gn]]), shape.3, shape.4)*(1-shape.ratio))
+          } else {
+            mean.groups[[gn]] <- c(rbeta(length(data.methyl[[gn]]), shape.3, shape.4)*shape.ratio+rbeta(length(data.methyl[[gn]]), shape.4, shape.3)*(1-shape.ratio))
+          }
         }
       }
     }
@@ -416,7 +444,11 @@ DMR.fg <- do.call(rbind.fill, lapply(1:d.fg, function(i){
         mean.groups[[gn_cmp1]] <- c(rbeta(length(data.methyl[[gn_cmp1]]), shape.2, shape.1)*shape.ratio+rbeta(length(data.methyl[[gn_cmp1]]), shape.1, shape.2)*(1-shape.ratio))
         mean.groups[[gn_cmp2]] <- c(rbeta(length(data.methyl[[gn_cmp2]]), shape.1, shape.2)*shape.ratio+rbeta(length(data.methyl[[gn_cmp2]]), shape.2, shape.1)*(1-shape.ratio))
         if ((gn!=gn_cmp1)&&(gn!=gn_cmp2)){
-          mean.groups[[gn]] <- c(rbeta(length(data.methyl[[gn]]), shape.3, shape.4)*shape.ratio+rbeta(length(data.methyl[[gn]]), shape.4, shape.3)*(1-shape.ratio))
+          if ((j%%4)/2 >= 1){
+            mean.groups[[gn]] <- c(rbeta(length(data.methyl[[gn]]), shape.4, shape.3)*shape.ratio+rbeta(length(data.methyl[[gn]]), shape.3, shape.4)*(1-shape.ratio))
+          } else {
+            mean.groups[[gn]] <- c(rbeta(length(data.methyl[[gn]]), shape.3, shape.4)*shape.ratio+rbeta(length(data.methyl[[gn]]), shape.4, shape.3)*(1-shape.ratio))
+          }
         }
       }
     }
@@ -455,16 +487,16 @@ for (gn in groupNames) {
 }
 names
     
-# BSmooth
-j <- 1
-for (gn in groupNames) {
-  for (i in data.methyl[[gn]]){
-    sample <- data[,c(1:4,i,(i+1))]
-    sample <- na.omit(sample)
-    write.table(file=paste0(names[j], "_beta.", shape.1, ".", shape.2, "_ratio.", shape.ratio, ".bsmooth"), format(sample, scientific=F, trim=T), col.names=F, row.names=F, sep="\t", quote=F)
-    j <- j+1
-  }
-}
+# # BSmooth
+# j <- 1
+# for (gn in groupNames) {
+#   for (i in data.methyl[[gn]]){
+#     sample <- data[,c(1:4,i,(i+1))]
+#     sample <- na.omit(sample)
+#     write.table(file=paste0(names[j], "_beta.", shape.1, ".", shape.2, "_ratio.", shape.ratio, ".bsmooth"), format(sample, scientific=F, trim=T), col.names=F, row.names=F, sep="\t", quote=F)
+#     j <- j+1
+#   }
+# }
 
 # metilene
 j <- (ncol(data) + 1)
@@ -492,17 +524,22 @@ write.table(file=paste0("DMR_annotation_beta.", shape.1, ".", shape.2, "_ratio."
 
 
 
-
-
-
-
-
+# Apply beta function         
+y_beta <- rbeta(1000, shape1 = shape.1, shape2 = shape.2) 
+y_beta_r <- rbeta(1000, shape1 = shape.2, shape2 = shape.1) 
+# Plot beta values
+p1 <- hist(y_beta)                     # centered at 4
+p2 <- hist(y_beta_r)                     # centered at 6
+plot( p2, col=rgb(0,0,1,1/4), xlim=c(0,1), ylim=c(0,250))  # first histogram
+plot( p1, col=rgb(1,0,0,1/4), xlim=c(0,1), ylim=c(0,250), add=T)  # second
+# Apply beta function         
 
 # Apply beta function         
-y_beta <- rbeta(1000, shape1 = 3, shape2 = 40) 
+y_beta <- rbeta(1000, shape1 = shape.3, shape2 = shape.4) 
+y_beta_r <- rbeta(1000, shape1 = shape.4, shape2 = shape.3) 
 # Plot beta values
-hist(y_beta) 
-# Apply beta function         
-y_beta <- rbeta(1000, shape1 = 0.8, shape2 = 1.2) 
-# Plot beta values
-hist(y_beta)                                      
+p1 <- hist(y_beta)                     # centered at 4
+p2 <- hist(y_beta_r)                     # centered at 6
+plot( p2, col=rgb(0,0,1,1/4), xlim=c(0,1), ylim=c(0,250))  # first histogram
+plot( p1, col=rgb(1,0,0,1/4), xlim=c(0,1), ylim=c(0,250), add=T)  # second
+# Apply beta function                                        
