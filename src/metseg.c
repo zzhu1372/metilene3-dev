@@ -2256,6 +2256,79 @@ void concatIntsToString(char **x, int *y, size_t size, char sep) {
     }
 }
 
+
+int calGroupNumber(int n, int ***grpA_subgroups, int ***grpB_subgroups){
+  int Nc = (pow(3,n)-pow(2,n+1)+1)/2; // number of possible combinations
+  fprintf(stderr, "# Combination %d\n",Nc);
+  int **A_subgroups;
+  int **B_subgroups;
+  A_subgroups = ALLOCMEMORY(NULL, NULL, int*, Nc);
+  B_subgroups = ALLOCMEMORY(NULL, NULL, int*, Nc);
+  for (int i = 0; i < Nc; i++)
+  {
+    A_subgroups[i] = NULL;
+    A_subgroups[i] = ALLOCMEMORY(NULL, A_subgroups[i], int, n);
+    B_subgroups[i] = NULL;
+    B_subgroups[i] = ALLOCMEMORY(NULL, B_subgroups[i], int, n);
+    for (int j = 0; j < n; j++)
+    {
+      A_subgroups[i][j] = 0;
+      B_subgroups[i][j] = 0;
+    }
+  }
+  int ii = 0; // index for effective combinations
+  for (int i = 0; i < pow(3,n); i++)
+  {
+    int i_copy = i;
+    int sumA = 0;
+    int sumB = 0;
+    int validAB=0; // to exclude duplicates
+    for (int j = 0; j < n; j++)
+    {
+      if (i_copy%3 == 1) {
+        A_subgroups[ii][j] = 1;
+        sumA++;
+        validAB = 0;
+      }
+      if (i_copy%3 == 2) {
+        B_subgroups[ii][j] = 1;
+        sumB++;
+        validAB = 1;
+      }
+      i_copy /= 3;
+    }
+    
+    if ((sumA>0)&&(sumB>0)&&(validAB))
+    {
+      fprintf(stdout, "# Combination %d:\tGroup A subgroups: ",ii);
+      for (int j = 0; j < n; j++)
+      {
+        if (A_subgroups[ii][j] == 1) {fprintf(stdout, "%d,",j);}
+      }
+      fprintf(stdout, "\tGroup B subgroups: ");
+      for (int j = 0; j < n; j++)
+      {
+        if (B_subgroups[ii][j] == 1) {fprintf(stdout, "%d,",j);}
+      }
+      fprintf(stdout, "\n");
+      ii++;
+      if (ii==Nc)
+      {
+        break;
+      }
+    } else {
+      for (int j = 0; j < n; j++)
+      {
+        A_subgroups[ii][j] = 0;
+        B_subgroups[ii][j] = 0;
+      }
+    }
+  }
+  *grpA_subgroups = A_subgroups;
+  *grpB_subgroups = B_subgroups;
+  return Nc;
+}
+
 /*----------------------------------- main -----------------------------------
  *    
  * @brief the main routine
@@ -2409,9 +2482,13 @@ int main(int argc, char** argv) {
   fprintf(stderr, "Single groups %s:\n", subgroupNames);
 
   // all combinations of subgroups
-  char *combinationNames = NULL;
+  // char *combinationNames = NULL;
   fprintf(stderr, "start combination.\n");
-  int groupNumber = nfo.groups*(nfo.groups-1)/2 + nfo.groups; // #one vs one + #one vs others
+  // int groupNumber = nfo.groups*(nfo.groups-1)/2 + nfo.groups; // #one vs one + #one vs others
+  int **grpA_subgroups=NULL;
+  int **grpB_subgroups=NULL;
+  int groupNumber = calGroupNumber(nfo.groups, &grpA_subgroups, &grpB_subgroups);
+
   int ***groupID;
   int **groupSize;
   groupID = ALLOCMEMORY(NULL, NULL, int**, 2);
@@ -2431,89 +2508,62 @@ int main(int argc, char** argv) {
     groupSize[1][i] = 0;
   }
 
-  int ii = 0; // index of samples in group (combined)
-
-  for (i = 0; i < nfo.groups; i++) // i for index of the single group (e.g., A) to be compared
+  for (i = 0; i < groupNumber; i++) // i for index of the single group (e.g., A) to be compared
   {
-    // one vs others
     int grpAindex = 0;
     int grpBindex = 0;
-
-    groupID[0][ii] = ALLOCMEMORY(NULL, groupID[0][ii], int, groupSize[0][ii]+subgroupSize[i]);
-    for (k = 0; k < subgroupSize[i]; k++)
-    {
-      groupID[0][ii][grpAindex] = subgroupID[i][k];
-      grpAindex++;
-    }
-    groupSize[0][ii] += subgroupSize[i];
     
-    int combinationNames_int[nfo.groups-1];
+    // int combinationNames_int[nfo.groups-1];
     int j2=0;
     for (j = 0; j < nfo.groups; j++) // j for index of the other groups (e.g., BC) to be compared
     {
-      if (i!=j)
+      if (grpA_subgroups[i][j]==1)
       {
-        combinationNames_int[j2++]=j;
-        groupID[1][ii] = ALLOCMEMORY(NULL, groupID[1][ii], int, groupSize[1][ii]+subgroupSize[j]);
+        // combinationNames_int[j2++]=j;
+        groupID[0][i] = ALLOCMEMORY(NULL, groupID[0][i], int, groupSize[0][i]+subgroupSize[j]);
         for (k = 0; k < subgroupSize[j]; k++)
         {
-          groupID[1][ii][grpBindex] = subgroupID[j][k];
+          groupID[0][i][grpAindex] = subgroupID[j][k];
+          grpAindex++;
+        }
+        groupSize[0][i] += subgroupSize[j];
+      }
+
+      if (grpB_subgroups[i][j]==1)
+      {
+        // combinationNames_int[j2++]=j;
+        groupID[1][i] = ALLOCMEMORY(NULL, groupID[1][i], int, groupSize[1][i]+subgroupSize[j]);
+        for (k = 0; k < subgroupSize[j]; k++)
+        {
+          groupID[1][i][grpBindex] = subgroupID[j][k];
           grpBindex++;
         }
-        groupSize[1][ii] += subgroupSize[j];
+        groupSize[1][i] += subgroupSize[j];
       }
+
     }
+
     char *tmp=NULL;
-    concatIntsToString(&tmp, combinationNames_int, nfo.groups-1, ',');
-    concatStrings(&combinationNames, tmp, '|');
-    fprintf(stderr, "CombinedGroup: %s\n", combinationNames);
+    // concatIntsToString(&tmp, combinationNames_int, nfo.groups-1, ',');
+    // concatStrings(&combinationNames, tmp, '|');
+    // fprintf(stderr, "CombinedGroup: %s\n", combinationNames);
 
-    fprintf(stderr, "CombinedGroup: %d; Size: %d. The following ids belong to the first combined group:\n", ii, groupSize[0][ii]);
-    for (k = 0; k < groupSize[0][ii]; k++)
+    fprintf(stderr, "CombinedGroup: %d; Size: %d. The following ids belong to the first combined group:\n", i, groupSize[0][i]);
+    for (k = 0; k < groupSize[0][i]; k++)
     {
-      fprintf(stderr, "%u: column: %d, name:%s\n", j, groupID[0][ii][k], 
-        csv[0]->strings[groupID[0][ii][k]+2].str);
+      fprintf(stderr, "%u: column: %d, name:%s\n", j, groupID[0][i][k], 
+        csv[0]->strings[groupID[0][i][k]+2].str);
     }
-    fprintf(stderr, "CombinedGroup: %d; Size: %d. The following ids belong to the second combined group:\n", ii, groupSize[1][ii]);
-    for (k = 0; k < groupSize[1][ii]; k++)
+    fprintf(stderr, "CombinedGroup: %d; Size: %d. The following ids belong to the second combined group:\n", i, groupSize[1][i]);
+    for (k = 0; k < groupSize[1][i]; k++)
     {
-      fprintf(stderr, "%u: column: %d, name:%s\n", j, groupID[1][ii][k], 
-        csv[0]->strings[groupID[1][ii][k]+2].str);
-    }
-    ii++;
-  }
-
-  for (i = 0; i < nfo.groups; i++) // i for index of the single group (e.g., A) to be compared
-  {
-    // one vs one
-    for (j = i+1; j < nfo.groups; j++) // j for index of the single group (e.g., B) to be compared
-    {
-      int grpAindex = 0;
-      int grpBindex = 0;
-
-      groupID[0][ii] = ALLOCMEMORY(NULL, groupID[0][ii], int, groupSize[0][ii]+subgroupSize[i]);
-      for (k = 0; k < subgroupSize[i]; k++)
-      {
-        groupID[0][ii][grpAindex] = subgroupID[i][k];
-        grpAindex++;
-        // fprintf(stderr, "CombinedGroup: 0; Sub:%d,%s\n", j, csv[0]->strings[subgroupID[j][k]+2].str);
-      }
-      groupSize[0][ii] += subgroupSize[i];
-      
-      groupID[1][ii] = ALLOCMEMORY(NULL, groupID[1][ii], int, groupSize[1][ii]+subgroupSize[j]);
-      for (k = 0; k < subgroupSize[j]; k++)
-      {
-        groupID[1][ii][grpBindex] = subgroupID[j][k];
-        grpBindex++;
-        // fprintf(stderr, "CombinedGroup: 1; Sub:%d,%s\n", j, csv[0]->strings[subgroupID[j][k]+2].str);
-      }
-      groupSize[1][ii] += subgroupSize[j];
-      ii++;
+      fprintf(stderr, "%u: column: %d, name:%s\n", j, groupID[1][i][k], 
+        csv[0]->strings[groupID[1][i][k]+2].str);
     }
   }
   
   fprintf(stderr, "end combination. # of combination:%d\n", groupNumber);
-  // newcodes
+  // assert(0);
 
   destructStringset(NULL, csv[0]);
   FREEMEMORY(NULL, csv);
@@ -3109,7 +3159,7 @@ int main(int argc, char** argv) {
     multiple_testing_correction(nfo.outputList, nfo.mode, nfo.mtc);
     // if(nfo.outputList->i>=2){fprintf(stderr,"start92:%d\n",nfo.outputList->segment_out[2].start);}
     fprintf(stderr, "Multiple testing correction done.\n");
-    fprintf(stdout, "chr\tstart\tstop\tq\tmeandiff\tlength\tmwu\tp\t%s\t%s\tsig.comparison\n",subgroupNames,combinationNames);
+    fprintf(stdout, "chr\tstart\tstop\tq\tmeandiff\tlength\tmwu\tp\t%s\t%s\tsig.comparison\n",subgroupNames,"combinationNames");
     for(int i=0;i<nfo.outputList->i;i++){
       // fprintf(stderr,"start10:%d\n",nfo.outputList->segment_out[2].start);
       // fprintf(stderr, "TEST %d: %d,%f.\n",i,nfo.outputList->segment_out[i].start,nfo.outputList->segment_out[i].meandiff);
