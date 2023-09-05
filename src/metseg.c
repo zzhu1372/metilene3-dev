@@ -629,34 +629,34 @@ void means(segment_t *seg , int a, int b, int ***groupID, int **groupSize, int g
     submeanvalues[sgn]=mean;
   }
 
-  int ci=0; // combination (more that one group) index
-  for (int gn = 0; gn < subgroupNumber; gn++)
-  {
-    int *grpA = groupID[1][gn];
-    int noA = groupSize[1][gn];
-    float dlA = 0;
-    float meanA=0;
+  // int ci=0; // combination (more that one group) index
+  // for (int gn = 0; gn < subgroupNumber; gn++)
+  // {
+  //   int *grpA = groupID[1][gn];
+  //   int noA = groupSize[1][gn];
+  //   float dlA = 0;
+  //   float meanA=0;
 
-    for(i=a; i<=b ; i++) {
-      for(j=0; j < noA; j++) {
-        meanA+=seg->value[i][grpA[j]];
-        dlA+=1;
-      }
-    }
+  //   for(i=a; i<=b ; i++) {
+  //     for(j=0; j < noA; j++) {
+  //       meanA+=seg->value[i][grpA[j]];
+  //       dlA+=1;
+  //     }
+  //   }
   
-    meanA/=dlA;
-    meanvalues[ci]=meanA;
-    ci++;
-  }
+  //   meanA/=dlA;
+  //   meanvalues[ci]=meanA;
+  //   ci++;
+  // }
 
   char *subtmp =NULL;
   concatFloatsToString(&subtmp, submeanvalues, subgroupNumber, '|');
   *meansA = subtmp;
 
-  char *tmp =NULL;
-  concatFloatsToString(&tmp, meanvalues, subgroupNumber, '|');
-  *meansB = tmp;
-  // *meansB = "TBC";
+  // char *tmp =NULL;
+  // concatFloatsToString(&tmp, meanvalues, subgroupNumber, '|');
+  // *meansB = tmp;
+  *meansB = "TBC";
 
 }
 
@@ -3159,13 +3159,13 @@ int main(int argc, char** argv) {
     multiple_testing_correction(nfo.outputList, nfo.mode, nfo.mtc);
     // if(nfo.outputList->i>=2){fprintf(stderr,"start92:%d\n",nfo.outputList->segment_out[2].start);}
     fprintf(stderr, "Multiple testing correction done.\n");
-    fprintf(stdout, "chr\tstart\tstop\tq\tmeandiff\tlength\tmwu\tp\t%s\t%s\tsig.comparison\n",subgroupNames,"combinationNames");
+    fprintf(stdout, "chr\tstart\tstop\tq\tmeandiff\tlength\tmwu\tp\t%s\tsig.comparison\n",subgroupNames);
     for(int i=0;i<nfo.outputList->i;i++){
       // fprintf(stderr,"start10:%d\n",nfo.outputList->segment_out[2].start);
       // fprintf(stderr, "TEST %d: %d,%f.\n",i,nfo.outputList->segment_out[i].start,nfo.outputList->segment_out[i].meandiff);
       if(nfo.outputList->segment_out[i].meandiff >= nfo.minMethDist || nfo.outputList->segment_out[i].meandiff <= -1* nfo.minMethDist) {
         // fprintf(stderr, "TEST %d: %d,%d.\n",i,nfo.outputList->segment_out[i].start,nfo.outputList->segment_out[i].stop);
-        fprintf(stdout, "%s\t%d\t%d\t%.5g\t%f\t%d\t%.5g\t%.5g\t%s\t%s\t%f\n", 
+        fprintf(stdout, "%s\t%d\t%d\t%.5g\t%f\t%d\t%.5g\t%.5g\t%s\t%f\n", 
                 nfo.outputList->segment_out[i].chr,
                 nfo.outputList->segment_out[i].start,
                 nfo.outputList->segment_out[i].stop,
@@ -3175,7 +3175,7 @@ int main(int argc, char** argv) {
                 nfo.outputList->segment_out[i].mwu,
                 nfo.outputList->segment_out[i].p,
                 nfo.outputList->segment_out[i].methA,
-                nfo.outputList->segment_out[i].methB,
+                // nfo.outputList->segment_out[i].methB,
                 nfo.outputList->segment_out[i].sigcp);
       }
     }
@@ -3187,7 +3187,7 @@ int main(int argc, char** argv) {
     fprintf(stderr, "Multiple testing correction done.\n");
     for(int i=0;i<nfo.outputList->i;i++){
       if(nfo.outputList->segment_out[i].meandiff >= nfo.minMethDist || nfo.outputList->segment_out[i].meandiff <= -1* nfo.minMethDist) {
-        fprintf(stdout, "%s\t%d\t%d\t%.5g\t%f\t%d\t%.5g\t%s\t%s\n", 
+        fprintf(stdout, "%s\t%d\t%d\t%.5g\t%f\t%d\t%.5g\t%s\n", 
                 nfo.outputList->segment_out[i].chr,
                 nfo.outputList->segment_out[i].start,
                 nfo.outputList->segment_out[i].stop,
@@ -3195,8 +3195,8 @@ int main(int argc, char** argv) {
                 nfo.outputList->segment_out[i].meandiff,
                 nfo.outputList->segment_out[i].length,
                 nfo.outputList->segment_out[i].mwu,
-                nfo.outputList->segment_out[i].methA,
-                nfo.outputList->segment_out[i].methB
+                nfo.outputList->segment_out[i].methA
+                // nfo.outputList->segment_out[i].methB
                 );
         }
     }
