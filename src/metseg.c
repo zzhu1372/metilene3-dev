@@ -2209,12 +2209,13 @@ initProgramParams (metseg_t *nfo)
 //   return ;
 // }
 
-// /*---------------------------- concatStrings -----------------------------
-//  *    
-//  * @brief concat two strings to one
-//  * @author zzhu
-//  *   
-//  */
+
+/*---------------------------- concatStrings -----------------------------
+ *    
+ * @brief concat two strings to one
+ * @author zzhu
+ *   
+ */
 
 void concatStrings(char **x, char *y, char sep) {
     size_t x_length = (*x != NULL) ? strlen(*x) : 0;
@@ -2256,6 +2257,14 @@ void concatIntsToString(char **x, int *y, size_t size, char sep) {
     }
 }
 
+
+
+/*---------------------------- calGroupNumber -----------------------------
+ *    
+ * @brief find all possible combinations(groups)
+ * @author zzhu
+ *   
+ */
 
 int calGroupNumber(int n, int ***grpA_subgroups, int ***grpB_subgroups){
   int Nc = (pow(3,n)-pow(2,n+1)+1)/2; // number of possible combinations
@@ -2327,6 +2336,20 @@ int calGroupNumber(int n, int ***grpA_subgroups, int ***grpB_subgroups){
   *grpA_subgroups = A_subgroups;
   *grpB_subgroups = B_subgroups;
   return Nc;
+}
+
+
+
+/*---------------------------- selectGroups -----------------------------
+ *    
+ * @brief select meaningful combinations(groups)
+ * @author zzhu
+ *   
+ */
+
+int selectGroups(int Nc, int ***grpA_subgroups, int ***grpB_subgroups){
+  /* TBC */
+  return 0;
 }
 
 /*----------------------------------- main -----------------------------------
