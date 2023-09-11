@@ -1547,11 +1547,11 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
             nfo->outputList->segment_out[nfo->outputList->i].chr = ALLOCMEMORY(NULL, NULL, char, strlen(seg->chr)+1);
             nfo->outputList->segment_out[nfo->outputList->i].chr = strcpy(nfo->outputList->segment_out[nfo->outputList->i].chr,seg->chr);
             nfo->outputList->segment_out[nfo->outputList->i].start = seg->pos[tmp->start]-1;
-            if ((tmp->stop-tmp->start+1+1)<10)
-            {
-              fprintf(stderr,"start1:%f,%d\n",(ks[0]),(tmp->stop-tmp->start+1));
-              assert(0);
-            }
+            // if ((tmp->stop-tmp->start+1+1)<10)
+            // {
+            //   fprintf(stderr,"start1:%f,%d\n",(ks[0]),(tmp->stop-tmp->start+1));
+            //   assert(0);
+            // }
             
             // assert((ks[0]<1)&&((tmp->stop-tmp->start+1)<nfo->mincpgs));
             // if(nfo->outputList->i>=2){fprintf(stderr,"start1:%d,%d",seg->pos[tmp->start]-1,nfo->outputList->segment_out[2].start);}
