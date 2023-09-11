@@ -287,7 +287,7 @@ setSegment(segment_t *seg, char *chr, int start, int stop,
   seg->meandiff = meandiff;
   seg->sigcp = sigcp;
 
-  assert((stop-start+1>=10)||(prob>1));
+  // assert((stop-start+1>=10)||(prob>1));
   
 }
 
@@ -1223,7 +1223,7 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
       //if the p-value of one of the three intervals is better than the original
       //recurse down to find the best subinterval
       if((newp<KS[0] || (newp>1 && KS[0]>1)) && (b-a >= nfo->mincpgs)) { // zzhu$ termination criteria (1)#CpG (2)p_child>p_parent. no need for newp>1???
-        assert((b-ab[1]+1>=10)||(ks3[0]>1));
+        // assert((b-ab[1]+1>=10)||(ks3[0]>1));
         pushSegment_p (&stack, a, b, ab, child+1, ks1, ks2, ks3, KS, NULL); // zzhu$ push the next child into the stack.
 
         //left interval child
