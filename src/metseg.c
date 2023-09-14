@@ -2040,109 +2040,71 @@ checkSetNAN(stringset_t **csv, double *values){
 //  */
  
 int 
-fillNAN(double *values, int **groupID, int *groupSize, metseg_t *nfo) {
-//   //    fprintf(stderr,"#Ueberhaupt schaetzen\n");
-//     int na=0;
-//     int nb=0;
-//     double *groupA = ALLOCMEMORY(NULL, NULL, double, noA);
-//     double *groupB = ALLOCMEMORY(NULL, NULL, double, noB);
-//     double varA;
-//     double varB;
-//     double meanA = 0.0;
-//     double meanB = 0.0;
-//     int j;
+fillNAN(double *values, int **subgroupID, int *subgroupSize, int numberSubGroup, metseg_t *nfo) {
+  //    fprintf(stderr,"#Ueberhaupt schaetzen\n");
+  for (int gn = 0; gn < numberSubGroup; gn++)
+  {  
+    int na=0;
+    int noA = subgroupSize[gn];
+    double *groupA = ALLOCMEMORY(NULL, NULL, double, noA);
+    double varA;
+    double meanA = 0.0;
+    int j;
 
-// //    fprintf(stdout,"\ngroupA\t");
-//     j=0;
-//     for(int i=0; i<noA; i++) 
-//         if(values[grpA[i]+2] == values[grpA[i]+2]) {
-//           groupA[j] = values[grpA[i]+2];
-//  //         fprintf(stdout,"%f\t",groupA[j]);
-//           na+=1;
-//           meanA+=groupA[j];
-//           j++;
-//     }
-//  //   fprintf(stdout,"\ngroupB\t");
+//    fprintf(stdout,"\ngroupA\t");
+    j=0;
+    for(int i=0; i<noA; i++) 
+        if(values[subgroupID[gn][i]+2] == values[subgroupID[gn][i]+2]) {
+          groupA[j] = values[subgroupID[gn][i]+2];
+ //         fprintf(stdout,"%f\t",groupA[j]);
+          na+=1;
+          meanA+=groupA[j];
+          j++;
+    }
+ //   fprintf(stdout,"\ngroupB\t");
    
-//     j=0;
-//     for(int i=0; i<noB; i++) 
-//         if(values[grpB[i]+2] == values[grpB[i]+2]) {
-//           groupB[j] = values[grpB[i]+2];
-// //          fprintf(stdout,"%f\t",groupB[j]);
-//           nb+=1;
-//           meanB+=groupB[j];
-//           j++;
-//     }
-// //    fprintf(stdout,"\n");
-   
-//     if(na<1 || nb<1 || na<nfo->minNoA || nb<nfo->minNoB) {
-//         FREEMEMORY(NULL, groupA);
-//         FREEMEMORY(NULL, groupB);
-// 	//        fprintf(stderr,"#REMOVING POSITION CUTOFF\n");
-//         return 1;
-//     }
-//     //    fprintf(stderr,"#NOT REMOVING POSITION CUTOFF\n");
-//     meanA/=(double)na;
-//     meanB/=(double)nb;
-//     if(na == 1) {
-//         varA=0.000001;
-//     }
-//     else {
-//         varA = var(groupA,na);
-//     }
-        
-//     if(nb == 1) {
-//         varB=0.000001;
-//     }
-//     else {
-//         varB = var(groupB,nb);
-//     }
-//  //   fprintf(stderr,"#meanA: %f\tmeanB: %f\tvarA: %f\tvarB: %f\n",meanA,meanB,varA,varB);
+    if(na<1 || na<nfo->minNoA) {
+        FREEMEMORY(NULL, groupA);
+	      //  fprintf(stderr,"#REMOVING POSITION CUTOFF\n");
+        return 1;
+    }
+    //    fprintf(stderr,"#NOT REMOVING POSITION CUTOFF\n");
+    meanA/=(double)na;
+    if(na == 1) {
+        varA=0.000001;
+    }
+    else {
+        varA = var(groupA,na);
+    }
+  //  fprintf(stderr,"Group %d, #meanA: %f\tvarA: %f\n",gn,meanA,varA);
     
     
-//     if(meanA < 0.000001)
-//         meanA = 0.000001;
-//     if(meanB < 0.000001)
-//         meanB = 0.000001;
+    if(meanA < 0.000001)
+        meanA = 0.000001;
    
-//  //   fprintf(stdout,"#new As:\n");
-//     for(int i=0; i<noA; i++) {
-//       if(isnan(values[grpA[i]+2])) {
-//           values[grpA[i]+2] = rbeta_mv(meanA, varA);
-//           while(isnan(values[grpA[i]+2])) {
-// //            values[grpA[i]+2] = meanA;
-//             values[grpA[i]+2] = rbeta_mv(meanA, varA);
-// 	    //            fprintf(stderr,"#betaAnot %d\n",i);
-//           }
-//           //else {
-//             //  fprintf(stdout,"#betaA %d\n",i);
-//        //   }
-//         }
-// //        fprintf(stdout,"%f\t",values[grpA[i]+2]);
-//     }
-//   //  fprintf(stdout,"#new Bs:\n");
-    
-//     for(int i=0; i<noB; i++) {
-//       if(isnan(values[grpB[i]+2])) {
-//           values[grpB[i]+2] = rbeta_mv(meanB, varB);
-//           while(isnan(values[grpB[i]+2])) {
-// //            values[grpB[i]+2] = meanB;
-//             values[grpB[i]+2] = rbeta_mv(meanB, varB);
-// //	      fprintf(stderr,"#betaBnot %d\n",i);
-//           }
-//          // else {
-//         //      fprintf(stdout,"#betaB %d\n",i);
-//         //  }
-//         }
-// //        fprintf(stdout,"%f\t",values[grpB[i]+2]);
-//     }
-// //    fprintf(stdout,"\n");
+  //  fprintf(stderr,"#new As:\n");
+    for(int i=0; i<noA; i++) {
+      if(isnan(values[subgroupID[gn][i]+2])) {
+          values[subgroupID[gn][i]+2] = rbeta_mv(meanA, varA);
+          while(isnan(values[subgroupID[gn][i]+2])) {
+//            values[subgroupID[gn][i]+2] = meanA;
+            values[subgroupID[gn][i]+2] = rbeta_mv(meanA, varA);
+	    //            fprintf(stderr,"#betaAnot %d\n",i);
+          }
+          //else {
+            //  fprintf(stdout,"#betaA %d\n",i);
+       //   }
+        }
+      //  fprintf(stderr,"%f\t",values[subgroupID[gn][i]+2]);
+    }
+    // fprintf(stderr,"\n");
 
-// //   fprintf(stdout,"#A:\t%f / %f\t%f / %f\n",meanA,varA,meanB,varB);
+
+//   fprintf(stdout,"#A:\t%f / %f\t%f / %f\n",meanA,varA,meanB,varB);
     
-//     FREEMEMORY(NULL, groupA);
-//     FREEMEMORY(NULL, groupB);
-    return 0;
+    FREEMEMORY(NULL, groupA);
+  }
+  return 0;
     
  //   double
 //var (double *x, int n)
@@ -2627,7 +2589,7 @@ int main(int argc, char** argv) {
             int nan = checkSetNAN(csv, values);
             if(nan>0) {
           //      fprintf(stderr,"call fillNAN");
-                nan = fillNAN(values, groupID, groupSize, &nfo);
+                nan = fillNAN(values, subgroupID, subgroupSize, nfo.groups, &nfo);
          //       fprintf(stderr,"...done\n");
                 
             }
@@ -2766,7 +2728,7 @@ int main(int argc, char** argv) {
             int nan = checkSetNAN(csv, values);
             if(nan>0) {
   //              fprintf(stdout,"call fillNAN");
-                nan = fillNAN(values, groupID, groupSize, &nfo);
+                nan = fillNAN(values, subgroupID, subgroupSize, nfo.groups, &nfo);
             }
             if(nan>0) {
                 destructStringset(NULL, csv[0]);
@@ -3042,8 +3004,8 @@ int main(int argc, char** argv) {
         double *values = ALLOCMEMORY(NULL, NULL, double, csv[0]->noofstrings);
         int nan = checkSetNAN(csv, values);
         if(nan>0) {
-    //     fprintf(stderr,"#call fillNAN\n");
-            nan = fillNAN(values, groupID, groupSize, &nfo);
+        // fprintf(stderr,"#call fillNAN for %d groups\n", nfo.groups);
+            nan = fillNAN(values, subgroupID, subgroupSize, nfo.groups, &nfo);
     //      fprintf(stderr,"#...done\n");
         }
      //   fprintf(stdout,"#LINES INPUT\n");
