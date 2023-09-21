@@ -2381,75 +2381,84 @@ void concatIntsToString(char **x, int *y, size_t size, char sep) {
  */
 
 int calGroupNumber(int n, int ***grpA_subgroups, int ***grpB_subgroups){
-  int Nc = (pow(3,n)-pow(2,n+1)+1)/2; // number of possible combinations
-  fprintf(stderr, "# Combination %d\n",Nc);
-  int **A_subgroups;
-  int **B_subgroups;
-  A_subgroups = ALLOCMEMORY(NULL, NULL, int*, Nc);
-  B_subgroups = ALLOCMEMORY(NULL, NULL, int*, Nc);
-  for (int i = 0; i < Nc; i++)
+  if (n<=10)
   {
-    A_subgroups[i] = NULL;
-    A_subgroups[i] = ALLOCMEMORY(NULL, A_subgroups[i], int, n);
-    B_subgroups[i] = NULL;
-    B_subgroups[i] = ALLOCMEMORY(NULL, B_subgroups[i], int, n);
-    for (int j = 0; j < n; j++)
+    int Nc = (pow(3,n)-pow(2,n+1)+1)/2; // number of possible combinations
+    fprintf(stderr, "# Combination %d\n",Nc);
+    int **A_subgroups;
+    int **B_subgroups;
+    A_subgroups = ALLOCMEMORY(NULL, NULL, int*, Nc);
+    B_subgroups = ALLOCMEMORY(NULL, NULL, int*, Nc);
+    for (int i = 0; i < Nc; i++)
     {
-      A_subgroups[i][j] = 0;
-      B_subgroups[i][j] = 0;
+      A_subgroups[i] = NULL;
+      A_subgroups[i] = ALLOCMEMORY(NULL, A_subgroups[i], int, n);
+      B_subgroups[i] = NULL;
+      B_subgroups[i] = ALLOCMEMORY(NULL, B_subgroups[i], int, n);
+      for (int j = 0; j < n; j++)
+      {
+        A_subgroups[i][j] = 0;
+        B_subgroups[i][j] = 0;
+      }
     }
+    int ii = 0; // index for effective combinations
+    for (int i = 0; i < pow(3,n); i++)
+    {
+      int i_copy = i;
+      int sumA = 0;
+      int sumB = 0;
+      int validAB=0; // to exclude duplicates
+      for (int j = 0; j < n; j++)
+      {
+        if (i_copy%3 == 1) {
+          A_subgroups[ii][j] = 1;
+          sumA++;
+          validAB = 0;
+        }
+        if (i_copy%3 == 2) {
+          B_subgroups[ii][j] = 1;
+          sumB++;
+          validAB = 1;
+        }
+        i_copy /= 3;
+      }
+      
+      if ((sumA>0)&&(sumB>0)&&(validAB))
+      {
+        fprintf(stdout, "# Combination %d:\tGroup A subgroups: ",ii);
+        for (int j = 0; j < n; j++)
+        {
+          if (A_subgroups[ii][j] == 1) {fprintf(stdout, "%d,",j);}
+        }
+        fprintf(stdout, "\tGroup B subgroups: ");
+        for (int j = 0; j < n; j++)
+        {
+          if (B_subgroups[ii][j] == 1) {fprintf(stdout, "%d,",j);}
+        }
+        fprintf(stdout, "\n");
+        ii++;
+        if (ii==Nc)
+        {
+          break;
+        }
+      } else {
+        for (int j = 0; j < n; j++)
+        {
+          A_subgroups[ii][j] = 0;
+          B_subgroups[ii][j] = 0;
+        }
+      }
+    }
+    *grpA_subgroups = A_subgroups;
+    *grpB_subgroups = B_subgroups;
+    return Nc;
   }
-  int ii = 0; // index for effective combinations
-  for (int i = 0; i < pow(3,n); i++)
-  {
-    int i_copy = i;
-    int sumA = 0;
-    int sumB = 0;
-    int validAB=0; // to exclude duplicates
-    for (int j = 0; j < n; j++)
-    {
-      if (i_copy%3 == 1) {
-        A_subgroups[ii][j] = 1;
-        sumA++;
-        validAB = 0;
-      }
-      if (i_copy%3 == 2) {
-        B_subgroups[ii][j] = 1;
-        sumB++;
-        validAB = 1;
-      }
-      i_copy /= 3;
-    }
-    
-    if ((sumA>0)&&(sumB>0)&&(validAB))
-    {
-      fprintf(stdout, "# Combination %d:\tGroup A subgroups: ",ii);
-      for (int j = 0; j < n; j++)
-      {
-        if (A_subgroups[ii][j] == 1) {fprintf(stdout, "%d,",j);}
-      }
-      fprintf(stdout, "\tGroup B subgroups: ");
-      for (int j = 0; j < n; j++)
-      {
-        if (B_subgroups[ii][j] == 1) {fprintf(stdout, "%d,",j);}
-      }
-      fprintf(stdout, "\n");
-      ii++;
-      if (ii==Nc)
-      {
-        break;
-      }
-    } else {
-      for (int j = 0; j < n; j++)
-      {
-        A_subgroups[ii][j] = 0;
-        B_subgroups[ii][j] = 0;
-      }
-    }
+  else {
+    fprintf(stderr, "pls use clustering() first.");
+    assert(0);
+    return 10;
   }
-  *grpA_subgroups = A_subgroups;
-  *grpB_subgroups = B_subgroups;
-  return Nc;
+  
 }
 
 
@@ -2649,14 +2658,14 @@ int main(int argc, char** argv) {
     groupSize[1][i] = 0;
   }
 
-  for (i = 0; i < groupNumber; i++) // i for index of the single group (e.g., A) to be compared
+  for (i = 0; i < groupNumber; i++)
   {
     int grpAindex = 0;
     int grpBindex = 0;
     
     // int combinationNames_int[nfo.groups-1];
     int j2=0;
-    for (j = 0; j < nfo.groups; j++) // j for index of the other groups (e.g., BC) to be compared
+    for (j = 0; j < nfo.groups; j++)
     {
       if (grpA_subgroups[i][j]==1)
       {
