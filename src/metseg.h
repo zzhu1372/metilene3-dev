@@ -103,6 +103,8 @@ typedef struct{
   int **groupSize;// newcodes
   int groupNumber;// newcodes
 
+  int clustering;// newcodes
+
 
   //only used for threaded segmentation
   char **chr;

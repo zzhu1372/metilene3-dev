@@ -2290,6 +2290,7 @@ initProgramParams (metseg_t *nfo)
   nfo->groups = 2; // newcodes
   nfo->minDMR = 1; // newcodes
   nfo->mindiff = 0; // newcodes
+  nfo->clustering = 0; // newcodes
   nfo->trend = 0.6;
   nfo->minNoA = -1;
   nfo->minNoB = -1;
@@ -2380,8 +2381,8 @@ void concatIntsToString(char **x, int *y, size_t size, char sep) {
  *   
  */
 
-int calGroupNumber(int n, int ***grpA_subgroups, int ***grpB_subgroups){
-  if (n<=10)
+int calGroupNumber(int n, int ***grpA_subgroups, int ***grpB_subgroups, int clustering){
+  if (clustering==0)
   {
     int Nc = (pow(3,n)-pow(2,n+1)+1)/2; // number of possible combinations
     fprintf(stderr, "# Combination %d\n",Nc);
@@ -2454,9 +2455,39 @@ int calGroupNumber(int n, int ***grpA_subgroups, int ***grpB_subgroups){
     return Nc;
   }
   else {
-    fprintf(stderr, "pls use clustering() first.");
-    assert(0);
-    return 10;
+    int Nc = (n*(n-1))/2; // number of possible combinations
+    fprintf(stderr, "# Combination %d\n",Nc);
+    int **A_subgroups;
+    int **B_subgroups;
+    A_subgroups = ALLOCMEMORY(NULL, NULL, int*, Nc);
+    B_subgroups = ALLOCMEMORY(NULL, NULL, int*, Nc);
+    for (int i = 0; i < Nc; i++)
+    {
+      A_subgroups[i] = NULL;
+      A_subgroups[i] = ALLOCMEMORY(NULL, A_subgroups[i], int, n);
+      B_subgroups[i] = NULL;
+      B_subgroups[i] = ALLOCMEMORY(NULL, B_subgroups[i], int, n);
+      for (int j = 0; j < n; j++)
+      {
+        A_subgroups[i][j] = 0;
+        B_subgroups[i][j] = 0;
+      }
+    }
+    int ii = 0; // index for effective combinations
+    for (int i = 0; i < n; i++)
+    {
+      int i_copy = i;
+      for (int j = i+1; j < n; j++)
+      {
+        A_subgroups[ii][i] = 1;
+        B_subgroups[ii][j] = 1;
+        ii++;
+        fprintf(stdout, "# Combination %d:\tGroup A subgroups: %d\tGroup B subgroups: %d\n",ii,i,j);
+      }
+    }
+    *grpA_subgroups = A_subgroups;
+    *grpB_subgroups = B_subgroups;
+    return Nc;
   }
   
 }
@@ -2564,6 +2595,8 @@ int main(int argc, char** argv) {
       "minimal DMR", "<n>", NULL, &nfo.minDMR);
   manopt(&optset, REQDBLOPT, 0, 'w', "mindiff", 
       "minimal difference", "<n>", NULL, &nfo.mindiff);
+  manopt(&optset, REQUINTOPT, 0, 'l', "clustering", 
+      "clustering or not: 0: no, 1: yes", "<n>", &modeconstraint, &nfo.clustering);
 
 
   args = manopt_getopts(&optset, argc, argv);
@@ -2637,7 +2670,7 @@ int main(int argc, char** argv) {
   // int groupNumber = nfo.groups*(nfo.groups-1)/2 + nfo.groups; // #one vs one + #one vs others
   int **grpA_subgroups=NULL;
   int **grpB_subgroups=NULL;
-  int groupNumber = calGroupNumber(nfo.groups, &grpA_subgroups, &grpB_subgroups);
+  int groupNumber = calGroupNumber(nfo.groups, &grpA_subgroups, &grpB_subgroups, nfo.clustering);
 
   int ***groupID;
   int **groupSize;
