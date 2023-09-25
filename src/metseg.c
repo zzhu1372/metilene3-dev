@@ -1169,13 +1169,6 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
           double Z_max_tmp = findMaxZ(XZ, 0, dimZ-1, ab_tmp, nfo);
           ab_tmp[0]+=a; 
           ab_tmp[1]+=a;
-          if (Z_max_tmp>Z_max)
-          {
-            Z_max=Z_max_tmp;
-            ab_Zmax[0] = ab_tmp[0];
-            ab_Zmax[1] = ab_tmp[1];
-            ab_Zmax[2] = gn;
-          }
 
           //check the left side of the maximum interval with ks
           n=a; m=ab_tmp[0]-1;
@@ -1211,24 +1204,44 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
           FREEMEMORY(NULL, XZ);
 
           // fprintf(stderr,"ks.%f,%f,%f\n", ks1_tmp[0],ks2_tmp[0],ks3_tmp[0]);
-          
-          if (MIN(ks1_tmp[0],MIN(ks2_tmp[0],ks3_tmp[0]))<MIN(ks1[0],MIN(ks2[0],ks3[0])))
+          if (Z_max_tmp>Z_max)
           {
-            // fprintf(stderr,"yes.");
-            for ( i = 0; i < 3; i++)
+            Z_max=Z_max_tmp;
+            ab_Zmax[0] = ab_tmp[0];
+            ab_Zmax[1] = ab_tmp[1];
+            ab_Zmax[2] = gn;
+            if (nfo->clustering == 1)
             {
-              ks1[i] = ks1_tmp[i];
-              ks2[i] = ks2_tmp[i];
-              ks3[i] = ks3_tmp[i];
+              for ( i = 0; i < 3; i++)
+              {
+                ks1[i] = ks1_tmp[i];
+                ks2[i] = ks2_tmp[i];
+                ks3[i] = ks3_tmp[i];
+              }
+              ks1[3] = gn;
+              ks2[3] = gn;
+              ks3[3] = gn;
             }
-            ks1[3] = gn;
-            ks2[3] = gn;
-            ks3[3] = gn;
-            ab[0] = ab_tmp[0];
-            ab[1] = ab_tmp[1];
-            ab[2] = gn;
-            ab_updated = 1;
-            // fprintf(stderr,"ab updated. a:%d,b:%d,ks1:%f,ks2:%f,ks3:%f\n", a,b, ks1[0],ks2[0],ks3[0]);
+          }
+          if (nfo->clustering == 0) {
+            if (MIN(ks1_tmp[0],MIN(ks2_tmp[0],ks3_tmp[0]))<MIN(ks1[0],MIN(ks2[0],ks3[0])))
+            {
+              // fprintf(stderr,"yes.");
+              for ( i = 0; i < 3; i++)
+              {
+                ks1[i] = ks1_tmp[i];
+                ks2[i] = ks2_tmp[i];
+                ks3[i] = ks3_tmp[i];
+              }
+              ks1[3] = gn;
+              ks2[3] = gn;
+              ks3[3] = gn;
+              ab[0] = ab_tmp[0];
+              ab[1] = ab_tmp[1];
+              ab[2] = gn;
+              ab_updated = 1;
+              // fprintf(stderr,"ab updated. a:%d,b:%d,ks1:%f,ks2:%f,ks3:%f\n", a,b, ks1[0],ks2[0],ks3[0]);
+            }
           }
           existSigGn++;
         }
@@ -1713,11 +1726,11 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
         tmp=NULL;
       }
 
-      if (( seg->pos[b->stop]-seg->pos[b->start]+1+1)<10)
-      {
-        fprintf(stderr,"start1:%f,%d\n",(b->prob),( seg->pos[b->stop]-seg->pos[b->start]+1+1));
-        assert(0);
-      }
+      // if (( seg->pos[b->stop]-seg->pos[b->start]+1+1)<10)
+      // {
+      //   fprintf(stderr,"start1:%f,%d\n",(b->prob),( seg->pos[b->stop]-seg->pos[b->start]+1+1));
+      //   assert(0);
+      // }
       
       nfo->outputList->segment_out[nfo->outputList->i].chr = ALLOCMEMORY(NULL, NULL, char, strlen(seg->chr)+1);
       nfo->outputList->segment_out[nfo->outputList->i].chr = strcpy(nfo->outputList->segment_out[nfo->outputList->i].chr,seg->chr);
@@ -2501,10 +2514,10 @@ int calGroupNumber(int n, int ***grpA_subgroups, int ***grpB_subgroups, int clus
  *   
  */
 
-int selectGroups(int Nc, int ***grpA_subgroups, int ***grpB_subgroups){
-  /* TBC */
-  return 0;
-}
+// int selectGroups(int Nc, int ***grpA_subgroups, int ***grpB_subgroups){
+//   /* TBC */
+//   return 0;
+// }
 
 /*----------------------------------- main -----------------------------------
  *    
@@ -3272,7 +3285,7 @@ int main(int argc, char** argv) {
           //now we must make sure that each thread keeps his own chunk
           //of the input data, thus the three arrays are simply set to NULL
           //the thread is going to take care of the deallocation
-          fprintf(stderr, "segmented %s-[%d,%d], %u CpGs\n", chr[0], pos[0], pos[j-1], j);
+          // fprintf(stderr, "segmented %s-[%d,%d], %u CpGs\n", chr[0], pos[0], pos[j-1], j);
 
           chr = NULL;
           pos = NULL;
