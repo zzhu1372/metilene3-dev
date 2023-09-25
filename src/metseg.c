@@ -2494,8 +2494,8 @@ int calGroupNumber(int n, int ***grpA_subgroups, int ***grpB_subgroups, int clus
       {
         A_subgroups[ii][i] = 1;
         B_subgroups[ii][j] = 1;
+        fprintf(stdout, "# Combination %d:\tGroup A subgroups: %d,\tGroup B subgroups: %d,\n",ii,i,j);
         ii++;
-        fprintf(stdout, "# Combination %d:\tGroup A subgroups: %d\tGroup B subgroups: %d\n",ii,i,j);
       }
     }
     *grpA_subgroups = A_subgroups;
