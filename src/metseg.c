@@ -575,7 +575,60 @@ void kstest(segment_t *seg , int a, int b, char mindiff, char mincpgs, char test
   FREEMEMORY(NULL, y);
 
 }
+void kstest_fake(segment_t *seg , int a, int b, char mindiff, char mincpgs, char test, 
+    double *ks, int *grpA, int noA, int *grpB, int noB, metseg_t* nfo){
 
+  int i,j;
+  int l = b-a+1;
+  double **la;
+  double **lb;
+  double *x;
+  double *y;
+  double mean1=0;
+  double mean2=0;
+  double meandiff = 0;
+  double dl1=noA;
+  double dl2=noB;
+  double dl = l;
+  double p = 2;
+  double faskstest[2] = {0,0};
+
+  //mincpgs set to false by default so this condition is never fullfilled
+
+  // mindiff = 0;
+  // mincpgs = 0;
+  // if(l< nfo->mincpgs && mincpgs) {
+  //   ks[0]=2;ks[1]=0;ks[2]=2;
+  // }
+  //debug
+  //  fprintf(stderr, "kstest for: %d\n",l);
+  la = ALLOCMEMORY(NULL, NULL, double*, 2);
+  lb = ALLOCMEMORY(NULL, NULL, double*, 2);
+
+  la[0] = ALLOCMEMORY(NULL, NULL, double, l*noA);
+  la[1] = ALLOCMEMORY(NULL, NULL, double, l*noA);
+  lb[0] = ALLOCMEMORY(NULL, NULL, double, l*noB);
+  lb[1] = ALLOCMEMORY(NULL, NULL, double, l*noB);
+  memset(la[0], 0, sizeof(double)*l*noA);
+  memset(la[1], 0, sizeof(double)*l*noA);
+  memset(lb[0], 0, sizeof(double)*l*noB);
+  memset(lb[1], 0, sizeof(double)*l*noB);
+
+  x = ALLOCMEMORY(NULL, NULL, double, l);
+  y = ALLOCMEMORY(NULL, NULL, double, l);
+
+  ks[0]=1;ks[1]=0;ks[2]=1;
+
+  FREEMEMORY(NULL, la[0]);
+  FREEMEMORY(NULL, la[1]);
+  FREEMEMORY(NULL, lb[0]);
+  FREEMEMORY(NULL, lb[1]);
+  FREEMEMORY(NULL, la);
+  FREEMEMORY(NULL, lb);
+  FREEMEMORY(NULL, x);
+  FREEMEMORY(NULL, y);
+
+}
 
 /*---------------------------------- kstest ----------------------------------
  *    
@@ -1041,6 +1094,19 @@ stackSegment_p(Segmentstack *stack)
 	return stack;
 }
 
+/*------------------------------ clustering ------------------------------
+ *    
+ * @brief given a 1 vs 1 comparison id, return 2 clusters for comparison
+ * @author zzhu
+ *   
+ */
+ 
+void
+clustering(double ***S, double *ks, int s, int t)
+{
+  // TBC: kstest(seg, n, m, 0, 1, 1, ks_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
+}
+
 /*-------------------------------- segment_p ---------------------------------
  *    
  * @brief calculate segment probability
@@ -1167,63 +1233,50 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
           //calculated the Z scores and find the maximum interval
           calcSingleDiffZabs(XS[gn], seg->n, XZ , a, b, 0, nfo);
           double Z_max_tmp = findMaxZ(XZ, 0, dimZ-1, ab_tmp, nfo);
-          ab_tmp[0]+=a; 
-          ab_tmp[1]+=a;
-
-          //check the left side of the maximum interval with ks
-          n=a; m=ab_tmp[0]-1;
-          if(ab_tmp[0] > 0 && m-n+1 >= nfo->mincpgs 
-              && calcSingleTrendAbs(XS[gn],a,ab_tmp[0]-1) > nfo->trend 
-              && noValley(XS[gn], a, ab_tmp[0]-1, nfo)) {
-
-            kstest(seg, a, ab_tmp[0]-1, 0, 1, 1, ks1_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
-          }
-
-          //check the maximum interval interval with ks
-          n=ab_tmp[0];m=ab_tmp[1];
-          if(m-n+1 >= nfo->mincpgs 
-              && calcSingleTrendAbs(XS[gn],ab_tmp[0],ab_tmp[1]) > nfo->trend 
-              && noValley(XS[gn], ab_tmp[0], ab_tmp[1], nfo) ) {
-
-            kstest(seg, ab_tmp[0], ab_tmp[1], 0, 1, 1, ks2_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
-          }
-
-          //check the right side of the maximum interval with ks
-          n=ab_tmp[1]+1;m=b;
-          if(m-n+1 >= nfo->mincpgs 
-              && calcSingleTrendAbs(XS[gn],ab_tmp[1]+1,b)> nfo->trend 
-              && noValley(XS[gn], ab_tmp[1]+1, b, nfo)) {
-
-            kstest(seg, ab_tmp[1]+1, b, 0, 1, 1, ks3_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
-          }
-
           for(i=0; i < dimZ; i++) {
             FREEMEMORY(NULL, XZ[i]);
           }
-
           FREEMEMORY(NULL, XZ);
+          ab_tmp[0]+=a; 
+          ab_tmp[1]+=a;
 
-          // fprintf(stderr,"ks.%f,%f,%f\n", ks1_tmp[0],ks2_tmp[0],ks3_tmp[0]);
           if (Z_max_tmp>Z_max)
           {
             Z_max=Z_max_tmp;
             ab_Zmax[0] = ab_tmp[0];
             ab_Zmax[1] = ab_tmp[1];
             ab_Zmax[2] = gn;
-            if (nfo->clustering == 1)
-            {
-              for ( i = 0; i < 3; i++)
-              {
-                ks1[i] = ks1_tmp[i];
-                ks2[i] = ks2_tmp[i];
-                ks3[i] = ks3_tmp[i];
-              }
-              ks1[3] = gn;
-              ks2[3] = gn;
-              ks3[3] = gn;
-            }
           }
-          if (nfo->clustering == 0) {
+
+          if (nfo->clustering == 0)
+          {  
+            //check the left side of the maximum interval with ks
+            n=a; m=ab_tmp[0]-1;
+            if(ab_tmp[0] > 0 && m-n+1 >= nfo->mincpgs 
+                && calcSingleTrendAbs(XS[gn],a,ab_tmp[0]-1) > nfo->trend 
+                && noValley(XS[gn], a, ab_tmp[0]-1, nfo)) {
+
+              kstest(seg, a, ab_tmp[0]-1, 0, 1, 1, ks1_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
+            }
+
+            //check the maximum interval interval with ks
+            n=ab_tmp[0];m=ab_tmp[1];
+            if(m-n+1 >= nfo->mincpgs 
+                && calcSingleTrendAbs(XS[gn],ab_tmp[0],ab_tmp[1]) > nfo->trend 
+                && noValley(XS[gn], ab_tmp[0], ab_tmp[1], nfo) ) {
+
+              kstest(seg, ab_tmp[0], ab_tmp[1], 0, 1, 1, ks2_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
+            }
+
+            //check the right side of the maximum interval with ks
+            n=ab_tmp[1]+1;m=b;
+            if(m-n+1 >= nfo->mincpgs 
+                && calcSingleTrendAbs(XS[gn],ab_tmp[1]+1,b)> nfo->trend 
+                && noValley(XS[gn], ab_tmp[1]+1, b, nfo)) {
+
+              kstest(seg, ab_tmp[1]+1, b, 0, 1, 1, ks3_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
+            }
+
             if (MIN(ks1_tmp[0],MIN(ks2_tmp[0],ks3_tmp[0]))<MIN(ks1[0],MIN(ks2[0],ks3[0])))
             {
               // fprintf(stderr,"yes.");
@@ -1242,12 +1295,39 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
               ab_updated = 1;
               // fprintf(stderr,"ab updated. a:%d,b:%d,ks1:%f,ks2:%f,ks3:%f\n", a,b, ks1[0],ks2[0],ks3[0]);
             }
-          }
+          } else
+          {  
+            //check the left side of the maximum interval with ks
+            n=a; m=ab_tmp[0]-1;
+            if(ab_tmp[0] > 0 && m-n+1 >= nfo->mincpgs 
+                && calcSingleTrendAbs(XS[gn],a,ab_tmp[0]-1) > nfo->trend 
+                && noValley(XS[gn], a, ab_tmp[0]-1, nfo)) {
+
+              kstest_fake(seg, a, ab_tmp[0]-1, 0, 1, 1, ks1_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
+            }
+
+            //check the maximum interval interval with ks
+            n=ab_tmp[0];m=ab_tmp[1];
+            if(m-n+1 >= nfo->mincpgs 
+                && calcSingleTrendAbs(XS[gn],ab_tmp[0],ab_tmp[1]) > nfo->trend 
+                && noValley(XS[gn], ab_tmp[0], ab_tmp[1], nfo) ) {
+
+              kstest_fake(seg, ab_tmp[0], ab_tmp[1], 0, 1, 1, ks2_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
+            }
+
+            //check the right side of the maximum interval with ks
+            n=ab_tmp[1]+1;m=b;
+            if(m-n+1 >= nfo->mincpgs 
+                && calcSingleTrendAbs(XS[gn],ab_tmp[1]+1,b)> nfo->trend 
+                && noValley(XS[gn], ab_tmp[1]+1, b, nfo)) {
+
+              kstest_fake(seg, ab_tmp[1]+1, b, 0, 1, 1, ks3_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
+            }
+          } 
           existSigGn++;
         }
 
         if(existSigGn==0){
-          
           ab[0] = ab_Zmax[0];
           ab[1] = ab_Zmax[1];
           ab[2] = ab_Zmax[2];
@@ -1271,7 +1351,6 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
                 // re-calculate the KS for all subsegments
         if(existSigGn>0){
           for(int gn=0;gn<groupNumber;gn++){
-            
             memmove(ks1_tmp, init_kstmp, sizeof(double)*3);
             memmove(ks2_tmp, init_kstmp, sizeof(double)*3);
             memmove(ks3_tmp, init_kstmp, sizeof(double)*3);
@@ -1335,6 +1414,13 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
               }
               ks3[3] = gn;
             }
+          }
+          if (nfo->clustering == 1)
+          {
+            // to be replaced by:
+            // clustering(XS, ks1, a, ab[0]-1);
+            // clustering(XS, ks2, ab[0], ab[1]);
+            // clustering(XS, ks3, ab[1]+1, b);
           }
         }
         // fprintf(stderr,"Final: a:%d,b:%d,ks1:%f,ks2:%f,ks3:%f\n", a,b, ks1[0],ks2[0],ks3[0]);
@@ -1525,6 +1611,7 @@ segmenterSTK(segment_t *seg, segment_t *globalbreaks, int *nglobal, double ***XS
             }
           }
         }
+        // clustering(XS, ks, n, m);
         a = n;
         b = m;
         KS = ks;
@@ -1575,6 +1662,7 @@ segmenterSTK(segment_t *seg, segment_t *globalbreaks, int *nglobal, double ***XS
             }
           }
         }
+        // clustering(XS, ks, n, m);
         a = n;
         b = m;
         KS = ks;
@@ -1662,6 +1750,7 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
         // double ks[] = {2,0,2};
         double ks[] = {2,0,2,-1}; // ks:best ks pval. {ks p, meandiff, ranksums p, group with min p}
         double ks_tmp[] = {2,0,2};
+        int existSigGn = 0;
         for(int gn=0; gn<groupNumber; gn++){
           // add a filter step here
           if (calcSigCpGs(XS[gn], tmp->start,tmp->stop) < nfo->minDMR)
@@ -1684,8 +1773,11 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
               ks[3] = gn;
             }
           }
+          existSigGn++;
         }
-
+        if (existSigGn>0){
+          // clustering(XS, ks, tmp->start,tmp->stop);
+        }
 
         if(ks[0]<2) {
             nfo->outputList->segment_out[nfo->outputList->i].chr = ALLOCMEMORY(NULL, NULL, char, strlen(seg->chr)+1);
@@ -1774,6 +1866,7 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
 
     double ks[] = {2,0,2,-1}; // ks:best ks pval. {ks p, meandiff, ranksums p, group with min p}
     double ks_tmp[] = {2,0,2};
+    int existSigGn = 0;
     for(int gn=0; gn<groupNumber; gn++){
       // add a filter step here
       if (calcSigCpGs(XS[gn], tmp->start,tmp->stop) < nfo->minDMR)
@@ -1796,6 +1889,10 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
           ks[3] = gn;
         }
       }
+      existSigGn++;
+    }
+    if (existSigGn>0){
+      // clustering(XS, ks, tmp->start,tmp->stop);
     }
 
     if(ks[0]<2) {
@@ -1909,6 +2006,7 @@ segmentation(char **chr, int *pos, double **value, int n,
   }
   if (existSigGn>0){
     // fprintf(stderr,"*****:\t%d\n",existSigGn);
+    // clustering(S, ks, 0, n-1);
     global = segmenterSTK(seg, global, &nglobal, S, 0, n-1, ks, 
       groupID, groupSize, groupNumber, nfo);
   }
