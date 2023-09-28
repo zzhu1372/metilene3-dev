@@ -1094,18 +1094,64 @@ stackSegment_p(Segmentstack *stack)
 	return stack;
 }
 
+/*---------------------------- concatStrings -----------------------------
+ *    
+ * @brief concat two strings to one
+ * @author zzhu
+ *   
+ */
+
+void concatStrings(char **x, char *y, char sep) {
+    size_t x_length = (*x != NULL) ? strlen(*x) : 0;
+    size_t y_length = strlen(y);
+    size_t new_length = x_length + 1 + y_length + 1;
+
+    // Allocate memory for the concatenated string
+    char *concatenated = (char *)malloc(new_length);
+    if (*x != NULL) {
+        strcpy(concatenated, *x);
+        strcat(concatenated, &sep);
+    }
+    strcat(concatenated, y);
+    if (*x != NULL) {
+        free(*x);
+    }
+    *x = concatenated;
+}
+
+void concatIntsToString(char **x, int *y, size_t size, char sep) {
+    size_t total_length = 0;
+    for (size_t i = 0; i < size; ++i) {
+        total_length += snprintf(NULL, 0, "%d", y[i]) + 1;
+    }
+    total_length -= 1;
+
+    *x = (char *)malloc(total_length + 1);
+
+    char *ptr = *x;
+    for (size_t i = 0; i < size; ++i) {
+        int written = snprintf(ptr, total_length + 1, "%d", y[i]);
+        ptr += written;
+        total_length -= written;
+        if (total_length > 0) {
+          *ptr = sep;
+          ++ptr;
+          --total_length;
+        }
+    }
+}
+
+
 /*------------------------------ clustering ------------------------------
  *    
  * @brief given a 1 vs 1 comparison id, return 2 clusters for comparison
  * @author zzhu
  *   
  */
- 
-#include <stdio.h>
-#include <stdlib.h>
 
 void
-clustering(int ***clusters, int *nclusters, double ***S, double *ks, int s, int t)
+clustering(int ***clusters, int *nclusters, int numberSubGroup, int **subgroupID, int *subgroupSize, 
+  segment_t *seg, metseg_t *nfo, double ***S, double *ks, int s, int t)
 {
   // clusters = ALLOCMEMORY(NULL, clusters, int*, (*nclusters)+1);
   // clusters[*nclusters] = ALLOCMEMORY(NULL, NULL, int, 3);
@@ -1123,14 +1169,131 @@ clustering(int ***clusters, int *nclusters, double ***S, double *ks, int s, int 
   *clusters = realloc(*clusters, (*nclusters) * sizeof(int *));
   
   // Allocate memory for the new row and append [1, 2, 3]
-  (*clusters)[(*nclusters) - 1] = malloc(4 * sizeof(int));
-  (*clusters)[(*nclusters) - 1][0] = 1;
-  (*clusters)[(*nclusters) - 1][1] = 0;
-  (*clusters)[(*nclusters) - 1][2] = 2;
-  (*clusters)[(*nclusters) - 1][3] = 1;
+  (*clusters)[(*nclusters) - 1] = malloc(numberSubGroup * sizeof(int));
+  
   
   // fprintf(stderr,"%d\n",(*nclusters));
-  // TBC: kstest(seg, n, m, 0, 1, 1, ks_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
+
+  if (ks[3]!=-1)
+  {
+    int gn = ks[3];
+    int A = 0;
+    int B = 0;
+    for (int i = 0; i < numberSubGroup; i++)
+    {
+      if (gn < ((2*numberSubGroup-i-1)*i/2)) {continue;}
+      A = i;
+      B = gn - (((2*numberSubGroup-i-1)*i/2) -i -1);
+      
+    }
+    // assert(0);
+    for (int g = 0; g < numberSubGroup; g++)
+    {
+      if (g==A) 
+      {
+        (*clusters)[(*nclusters) - 1][g] = 0;
+      } else if (g==B)
+      {
+        (*clusters)[(*nclusters) - 1][g] = 2;
+      } else
+      {
+        (*clusters)[(*nclusters) - 1][g] = 1;
+      }
+    }
+
+
+    for (int g = 0; g < numberSubGroup; g++)
+    {
+      int i, j;
+      if (g==A) {continue;}    
+      if (g>A)
+      {
+        i = A; j = g;
+      } else 
+      {
+        i = g; j = A;
+      }
+      int newgn = ((2*numberSubGroup-i-1)*i/2) + (j-i-1);
+
+      if (calcSigCpGs(S[newgn], s, t) < nfo->minDMR)
+      {
+        (*clusters)[(*nclusters) - 1][g] -= 1;
+      } 
+        
+    }
+
+    for (int g = 0; g < numberSubGroup; g++)
+    {
+      int i, j;
+      if (g==B) {continue;}    
+      if (g>B)
+      {
+        i = B; j = g;
+      } else 
+      {
+        i = g; j = B;
+      }
+      int newgn = ((2*numberSubGroup-i-1)*i/2) + (j-i-1);
+
+      if (calcSigCpGs(S[newgn], s, t) < nfo->minDMR)
+      {
+        (*clusters)[(*nclusters) - 1][g] += 1;
+      } 
+ 
+    }
+
+    int **cgroupID;
+    int *cgroupSize;
+
+    cgroupID = ALLOCMEMORY(NULL, NULL, int*, 2);
+    cgroupSize = ALLOCMEMORY(NULL, NULL, int, 2);
+    int grpindex[2];
+    grpindex[0] = 0;
+    grpindex[1] = 0;
+    for (int i = 0; i < 2; i++)
+    {
+      cgroupID[i] = NULL;
+      // cgroupID[i] = ALLOCMEMORY(NULL, cgroupID[i], int*, numberSubGroup);
+      cgroupSize[i] = 0;
+    }
+    for (int j = 0; j < numberSubGroup; j++)
+    {
+      int i;
+      if ((*clusters)[(*nclusters) - 1][j]==0)
+      {
+        i = 0;
+      }else if ((*clusters)[(*nclusters) - 1][j]==2)
+      {
+        i = 1;
+      } else { continue; }
+      
+      cgroupID[i] = ALLOCMEMORY(NULL, cgroupID[i], int, cgroupSize[i]+subgroupSize[j]);
+      for (int k = 0; k < subgroupSize[j]; k++)
+      {
+        cgroupID[i][grpindex[i]] = subgroupID[j][k];
+        grpindex[i]++;
+      }
+      cgroupSize[i] += subgroupSize[j];
+    }
+
+    kstest(seg, s, t, 0, 1, 1, ks, cgroupID[0], cgroupSize[0], cgroupID[1], cgroupSize[1], nfo);
+    
+    ks[3] = (*nclusters) - 1;
+
+    for (int i = 0; i < 2; i++)
+    {
+      FREEMEMORY(NULL, cgroupID[i]);
+    }
+    FREEMEMORY(NULL, cgroupID);
+    FREEMEMORY(NULL, cgroupSize);
+    // for (int i = 0; i < numberSubGroup; i++)
+    // {
+    //   fprintf(stderr, "%d,\n", (*clusters)[(*nclusters) - 1][i]);
+    // }
+    // TBC: kstest(seg, n, m, 0, 1, 1, ks_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
+  }
+  
+  
 }
 
 /*-------------------------------- segment_p ---------------------------------
@@ -1144,7 +1307,7 @@ clustering(int ***clusters, int *nclusters, double ***S, double *ks, int s, int 
 segment_t*
 segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS, 
     int a, int b, double *KS, char first, 
-    int ***groupID, int **groupSize, int groupNumber, int ***clusters, int *nclusters, metseg_t *nfo) {
+    int ***groupID, int **groupSize, int groupNumber, int **subgroupID, int *subgroupSize, int ***clusters, int *nclusters, metseg_t *nfo) {
 // zzhu$ a,b: the start pos and end pos of the seg. ab: {start of subseg, end of subseg}. KS: the test result for the seg.
   int i, n, m;
   int dimZ, child = 0; // zzhu$ child: the pointer to a child, start from the left child
@@ -1444,9 +1607,22 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
           if (nfo->clustering == 1)
           {
             // to be replaced by:
-            clustering(clusters, nclusters, XS, ks1, a, ab[0]-1);
-            clustering(clusters, nclusters, XS, ks2, ab[0], ab[1]);
-            clustering(clusters, nclusters, XS, ks3, ab[1]+1, b);
+            // void clustering(int ***clusters, int *nclusters, int numberSubGroup, int **subgroupID, int *subgroupSize, 
+            // segment_t *seg, metseg_t *nfo, double ***S, double *ks, int s, int t)
+
+            n=a; m=ab[0]-1;
+            if(ab[0] > 0 && m-n+1 >= nfo->mincpgs) {
+              clustering(clusters, nclusters, nfo->groups, subgroupID, subgroupSize, seg, nfo, XS, ks1, a, ab[0]-1);
+            }
+            n=ab[0];m=ab[1];
+            if(m-n+1 >= nfo->mincpgs) {
+              clustering(clusters, nclusters, nfo->groups, subgroupID, subgroupSize, seg, nfo, XS, ks2, ab[0], ab[1]);
+            }
+            n=ab[1]+1;m=b;
+            if(m-n+1 >= nfo->mincpgs) {
+              clustering(clusters, nclusters, nfo->groups, subgroupID, subgroupSize, seg, nfo, XS, ks3, ab[1]+1, b);
+            }
+
           }
         }
         // fprintf(stderr,"Final: a:%d,b:%d,ks1:%f,ks2:%f,ks3:%f\n", a,b, ks1[0],ks2[0],ks3[0]);
@@ -1578,7 +1754,7 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
  */
 segment_t*
 segmenterSTK(segment_t *seg, segment_t *globalbreaks, int *nglobal, double ***XS, 
-    int a, int b, double *KS, int ***groupID, int **groupSize, int groupNumber, int ***clusters, int *nclusters,
+    int a, int b, double *KS, int ***groupID, int **groupSize, int groupNumber, int **subgroupID, int *subgroupSize, int ***clusters, int *nclusters,
     metseg_t *nfo) {
   
   // zzhu$ a: the start pos of the region, b is the end pos.
@@ -1598,7 +1774,7 @@ segmenterSTK(segment_t *seg, segment_t *globalbreaks, int *nglobal, double ***XS
       nbreaks = 0;
       breaks = NULL;
       breaks = segment_pSTKopt(seg, breaks, &nbreaks, XS, a, b, KS, 0, 
-          groupID, groupSize, groupNumber, clusters, nclusters, nfo);
+          groupID, groupSize, groupNumber, subgroupID, subgroupSize, clusters, nclusters, nfo);
 
       max = &breaks[0]; // zzhu$ max: the break with most significant p value.
       // zzhu$ the most significant break as DMR.
@@ -1637,7 +1813,7 @@ segmenterSTK(segment_t *seg, segment_t *globalbreaks, int *nglobal, double ***XS
             }
           }
         }
-        clustering(clusters, nclusters, XS, ks, n, m);
+        if(m-n+1 >= nfo->mincpgs){clustering(clusters, nclusters, nfo->groups, subgroupID, subgroupSize, seg, nfo, XS, ks, n, m);}
         a = n;
         b = m;
         KS = ks;
@@ -1688,7 +1864,7 @@ segmenterSTK(segment_t *seg, segment_t *globalbreaks, int *nglobal, double ***XS
             }
           }
         }
-        clustering(clusters, nclusters, XS, ks, n, m);
+        if(m-n+1 >= nfo->mincpgs){clustering(clusters, nclusters, nfo->groups, subgroupID, subgroupSize, seg, nfo, XS, ks, n, m);}
         a = n;
         b = m;
         KS = ks;
@@ -1704,13 +1880,29 @@ segmenterSTK(segment_t *seg, segment_t *globalbreaks, int *nglobal, double ***XS
   return globalbreaks;
 }
 
+/*---------------------------------- convert_sigcp2string ----------------------------------
+ *    
+ * @brief convert segment-specific sigcp to string
+ * @author zzhu
+ *   
+ */
+void convert_sigcp2string(int sigcp, int **clusters, int subgroupNumber, char **meansB){
+  char *subtmp =NULL;
+  // for (int i = 0; i < subgroupNumber; i++)
+  // {
+  //   fprintf(stderr, "%d,\n",clusters[sigcp][i]);
+  // }
+  
+  concatIntsToString(&subtmp, clusters[sigcp], subgroupNumber, '|');
+  *meansB = subtmp;
+}
+
 /*---------------------------------- output ----------------------------------
  *    
  * @brief output routine
  * @author Frank Juehling and Steve Hoffmann 
  *   
  */
-
 
 void
 output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS, 
@@ -1723,7 +1915,14 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
         nfo->outputList->n+=1000000;
         nfo->outputList->segment_out = ALLOCMEMORY(NULL, nfo->outputList->segment_out, segment_out, nfo->outputList->n);
   }
-  
+
+  // for (int cl = 0; cl < nclusters; cl++)
+  // {
+  //         for (int i = 0; i < subgroupNumber; i++)
+  //   {
+  //     fprintf(stderr, "output%d,\t",(*clusters)[cl][i]);
+  //   }
+  // }
         
   int i;
   double trend;
@@ -1749,6 +1948,7 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
         // fprintf(stderr, "Output 0: \t%s\n", me[0]);
         // fprintf(stderr, "Output 0: \t%s\n", me[1]);
         means(seg, tmp->start,tmp->stop, groupID, groupSize, groupNumber, subgroupID, subgroupSize, subgroupNumber, &me[0], &me[1]);
+        convert_sigcp2string(tmp->sigcp, *clusters, subgroupNumber, &me[1]);
         // fprintf(stderr, "Output 1: \t%s\n", me[0]);
         // fprintf(stderr, "Output 1: \t%s\n", me[1]);
         
@@ -1801,8 +2001,8 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
           }
           existSigGn++;
         }
-        if (existSigGn>0){
-          clustering(clusters, nclusters, XS, ks, tmp->start,tmp->stop);
+        if (existSigGn>0 && tmp->stop-tmp->start + 1 >= nfo->mincpgs){
+          clustering(clusters, nclusters, nfo->groups, subgroupID, subgroupSize, seg, nfo, XS, ks, tmp->start,tmp->stop);
         }
 
         if(ks[0]<2) {
@@ -1827,6 +2027,7 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
             
             char *me[] = {"-2","-2"};
             means(seg,tmp->start,tmp->stop, groupID, groupSize, groupNumber, subgroupID, subgroupSize, subgroupNumber, &me[0], &me[1]);
+            convert_sigcp2string(tmp->sigcp, *clusters, subgroupNumber, &me[1]);
             nfo->outputList->segment_out[nfo->outputList->i].methA = ALLOCMEMORY(NULL, NULL, char, strlen(me[0])+1);
             nfo->outputList->segment_out[nfo->outputList->i].methB = ALLOCMEMORY(NULL, NULL, char, strlen(me[1])+1);
             nfo->outputList->segment_out[nfo->outputList->i].methA = strcpy(nfo->outputList->segment_out[nfo->outputList->i].methA,me[0]);
@@ -1863,6 +2064,13 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
       
       char *me[] = {"-2","-2"};
       means(seg, b->start,b->stop, groupID, groupSize, groupNumber,subgroupID, subgroupSize, subgroupNumber, &me[0], &me[1]);
+
+      // for (int i = 0; i < subgroupNumber; i++)
+      // {
+      //   fprintf(stderr, "sadfa%d,\t",clusters[(int)b->sigcp][i]);
+      // }
+
+      convert_sigcp2string(b->sigcp, *clusters, subgroupNumber, &me[1]);
       nfo->outputList->segment_out[nfo->outputList->i].methA = ALLOCMEMORY(NULL, NULL, char, strlen(me[0])+1);
       nfo->outputList->segment_out[nfo->outputList->i].methB = ALLOCMEMORY(NULL, NULL, char, strlen(me[1])+1);
       nfo->outputList->segment_out[nfo->outputList->i].methA = strcpy(nfo->outputList->segment_out[nfo->outputList->i].methA,me[0]);
@@ -1917,8 +2125,8 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
       }
       existSigGn++;
     }
-    if (existSigGn>0){
-      clustering(clusters, nclusters, XS, ks, tmp->start,tmp->stop);
+    if (existSigGn>0 && tmp->stop-tmp->start + 1 >= nfo->mincpgs){
+      clustering(clusters, nclusters, nfo->groups, subgroupID, subgroupSize, seg, nfo, XS, ks, tmp->start,tmp->stop);
     }
 
     if(ks[0]<2) {
@@ -1943,6 +2151,7 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
         
         char *me[] = {"-2","-2"};
         means(seg, tmp->start,tmp->stop, groupID, groupSize, groupNumber, subgroupID, subgroupSize, subgroupNumber, &me[0], &me[1]);
+        convert_sigcp2string(tmp->sigcp, *clusters, subgroupNumber, &me[1]);
         nfo->outputList->segment_out[nfo->outputList->i].methA = ALLOCMEMORY(NULL, NULL, char, strlen(me[0])+1);
         nfo->outputList->segment_out[nfo->outputList->i].methB = ALLOCMEMORY(NULL, NULL, char, strlen(me[1])+1);
         nfo->outputList->segment_out[nfo->outputList->i].methA = strcpy(nfo->outputList->segment_out[nfo->outputList->i].methA,me[0]);
@@ -2033,11 +2242,11 @@ segmentation(char **chr, int *pos, double **value, int n,
     }
     existSigGn++;
   }
-  if (existSigGn>0){
+  if (existSigGn>0 && seg->n-1 >= nfo->mincpgs){
     // fprintf(stderr,"*****:\t%d\n",existSigGn);
-    clustering(&clusters, &nclusters, S, ks, 0, n-1);
+    clustering(&clusters, &nclusters, nfo->groups, subgroupID, subgroupSize, seg, nfo, S, ks, 0, n-1);
     global = segmenterSTK(seg, global, &nglobal, S, 0, n-1, ks, 
-      groupID, groupSize, groupNumber, &clusters, &nclusters, nfo);
+      groupID, groupSize, groupNumber, subgroupID, subgroupSize, &clusters, &nclusters, nfo);
   }
   
 
@@ -2046,6 +2255,13 @@ segmentation(char **chr, int *pos, double **value, int n,
     pthread_mutex_lock(&out);
   }
   //output here   
+  // for (int cl = 0; cl<nclusters; cl++) {
+  //   for (int i = 0; i < nfo->groups; i++)
+  //   {
+  //     fprintf(stderr, "%d,\t", clusters[cl][i]);
+  //   }
+  //   fprintf(stderr, "\n");
+  // }
   // fprintf(stderr,"nfo->mincpgs:%d", nfo->mincpgs);
   output(seg, global, nglobal, S, groupID, groupSize, groupNumber, subgroupID, subgroupSize, nfo->groups, &clusters, &nclusters, nfo);
   
@@ -2147,6 +2363,7 @@ int **subgroupID, int *subgroupSize, metseg_t *nfo) {
     }
     char *me[] = {"-2","-2"};
     means(seg, 0, seg->n-1,groupID, groupSize, groupNumber, subgroupID, subgroupSize, nfo->groups, &me[0],&me[1]);
+    // convert_sigcp2string(tmp->sigcp, clusters, subgroupNumber, &me[1]);
     
 //    void kstest(segment_t *seg , int a, int b, char mindiff, char mincpgs, char test, 
 //  (segment_t *seg , int a, int b, char mindiff, char mincpgs, char test, 
@@ -2478,52 +2695,6 @@ initProgramParams (metseg_t *nfo)
 // }
 
 
-/*---------------------------- concatStrings -----------------------------
- *    
- * @brief concat two strings to one
- * @author zzhu
- *   
- */
-
-void concatStrings(char **x, char *y, char sep) {
-    size_t x_length = (*x != NULL) ? strlen(*x) : 0;
-    size_t y_length = strlen(y);
-    size_t new_length = x_length + 1 + y_length + 1;
-
-    // Allocate memory for the concatenated string
-    char *concatenated = (char *)malloc(new_length);
-    if (*x != NULL) {
-        strcpy(concatenated, *x);
-        strcat(concatenated, &sep);
-    }
-    strcat(concatenated, y);
-    if (*x != NULL) {
-        free(*x);
-    }
-    *x = concatenated;
-}
-
-void concatIntsToString(char **x, int *y, size_t size, char sep) {
-    size_t total_length = 0;
-    for (size_t i = 0; i < size; ++i) {
-        total_length += snprintf(NULL, 0, "%d", y[i]) + 1;
-    }
-    total_length -= 1;
-
-    *x = (char *)malloc(total_length + 1);
-
-    char *ptr = *x;
-    for (size_t i = 0; i < size; ++i) {
-        int written = snprintf(ptr, total_length + 1, "%d", y[i]);
-        ptr += written;
-        total_length -= written;
-        if (total_length > 0) {
-          *ptr = sep;
-          ++ptr;
-          --total_length;
-        }
-    }
-}
 
 
 
@@ -3510,7 +3681,7 @@ int main(int argc, char** argv) {
                 nfo.outputList->segment_out[i].length,                
                 nfo.outputList->segment_out[i].mwu,
                 nfo.outputList->segment_out[i].p,
-                nfo.outputList->segment_out[i].methA,
+                nfo.outputList->segment_out[i].methB,
                 // nfo.outputList->segment_out[i].methB,
                 nfo.outputList->segment_out[i].sigcp);
       }
