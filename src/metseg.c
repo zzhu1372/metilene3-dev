@@ -1153,29 +1153,17 @@ void
 clustering(int ***clusters, int *nclusters, int numberSubGroup, int **subgroupID, int *subgroupSize, 
   segment_t *seg, metseg_t *nfo, double ***S, double *ks, int s, int t)
 {
-  // clusters = ALLOCMEMORY(NULL, clusters, int*, (*nclusters)+1);
-  // clusters[*nclusters] = ALLOCMEMORY(NULL, NULL, int, 3);
-  // for (int i = 0; i < 3; i++)
-  // {
-  //   clusters[*nclusters][i] = i;
-  // }
-  // (*nclusters)+=1;
-  // return clusters;
-
-  // Increase the number of rows in X by 1
-  (*nclusters)++;
-  
-  // Reallocate memory for X
-  *clusters = realloc(*clusters, (*nclusters) * sizeof(int *));
-  
-  // Allocate memory for the new row and append [1, 2, 3]
-  (*clusters)[(*nclusters) - 1] = malloc(numberSubGroup * sizeof(int));
-  
-  
-  // fprintf(stderr,"%d\n",(*nclusters));
-
   if (ks[3]!=-1)
   {
+
+    // Increase the number of rows in X by 1
+    (*nclusters)++;
+    // Reallocate memory for X
+    *clusters = realloc(*clusters, (*nclusters) * sizeof(int *));
+
+    // Allocate memory for the new row and append [1, 2, 3]
+    (*clusters)[(*nclusters) - 1] = malloc(numberSubGroup * sizeof(int));
+
     int gn = ks[3];
     int A = 0;
     int B = 0;
@@ -1275,22 +1263,17 @@ clustering(int ***clusters, int *nclusters, int numberSubGroup, int **subgroupID
       }
       cgroupSize[i] += subgroupSize[j];
     }
-
-    kstest(seg, s, t, 0, 1, 1, ks, cgroupID[0], cgroupSize[0], cgroupID[1], cgroupSize[1], nfo);
+    if (cgroupSize[0]>0 && cgroupSize[1]>0)
+    {kstest(seg, s, t, 0, 1, 1, ks, cgroupID[0], cgroupSize[0], cgroupID[1], cgroupSize[1], nfo);}
     
     ks[3] = (*nclusters) - 1;
-
+    // fprintf(stderr,"ks test done%f\n",ks[3]);
     for (int i = 0; i < 2; i++)
     {
       FREEMEMORY(NULL, cgroupID[i]);
     }
     FREEMEMORY(NULL, cgroupID);
     FREEMEMORY(NULL, cgroupSize);
-    // for (int i = 0; i < numberSubGroup; i++)
-    // {
-    //   fprintf(stderr, "%d,\n", (*clusters)[(*nclusters) - 1][i]);
-    // }
-    // TBC: kstest(seg, n, m, 0, 1, 1, ks_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
   }
   
   
@@ -1886,15 +1869,13 @@ segmenterSTK(segment_t *seg, segment_t *globalbreaks, int *nglobal, double ***XS
  * @author zzhu
  *   
  */
-void convert_sigcp2string(int sigcp, int **clusters, int subgroupNumber, char **meansB){
+void convert_sigcp2string(int nclusters, int sigcp, int **clusters, int subgroupNumber, char **meansB){
   char *subtmp =NULL;
-  // for (int i = 0; i < subgroupNumber; i++)
-  // {
-  //   fprintf(stderr, "%d,\n",clusters[sigcp][i]);
-  // }
-  
-  concatIntsToString(&subtmp, clusters[sigcp], subgroupNumber, '|');
-  *meansB = subtmp;
+  if (sigcp>=0 && sigcp<nclusters)
+  {
+      concatIntsToString(&subtmp, clusters[sigcp], subgroupNumber, '|');
+      *meansB = subtmp;
+  }
 }
 
 /*---------------------------------- output ----------------------------------
@@ -1910,7 +1891,7 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
     int **subgroupID, int *subgroupSize, int subgroupNumber, int ***clusters, int *nclusters,
     metseg_t *nfo) {
   
-    
+  // fprintf(stderr,"start out2*****:\t%d\n",*nclusters);
   if(nfo->outputList->i >= nfo->outputList->n) {
         nfo->outputList->n+=1000000;
         nfo->outputList->segment_out = ALLOCMEMORY(NULL, nfo->outputList->segment_out, segment_out, nfo->outputList->n);
@@ -1934,7 +1915,7 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
 
     if(b->prob > 1) {
       if(tmp == NULL) {
-
+        // fprintf(stderr,"FirstNUL\n");
         tmp = ALLOCMEMORY(NULL, NULL, segment_t, 1);
         tmp->chr = b->chr;
         tmp->start=b->start;
@@ -1942,15 +1923,22 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
         // tmp->prob=b->prob;
         // tmp->meandiff=b->meandiff;
         // tmp->test=b->test;
-        // tmp->sigcp=b->sigcp;
+        tmp->sigcp=b->sigcp;
         
         char *me[] = {"-2","-2"};
         // fprintf(stderr, "Output 0: \t%s\n", me[0]);
-        // fprintf(stderr, "Output 0: \t%s\n", me[1]);
+        // fprintf(stderr, "Output 02: \t%s\n", me[1]);
         means(seg, tmp->start,tmp->stop, groupID, groupSize, groupNumber, subgroupID, subgroupSize, subgroupNumber, &me[0], &me[1]);
-        convert_sigcp2string(tmp->sigcp, *clusters, subgroupNumber, &me[1]);
         // fprintf(stderr, "Output 1: \t%s\n", me[0]);
-        // fprintf(stderr, "Output 1: \t%s\n", me[1]);
+        // fprintf(stderr, "Output 11: \t%f,%d\n", b->sigcp, *nclusters);
+      //         for (int i = 0; i < subgroupNumber; i++)
+      // {
+      //   fprintf(stderr, "sadfa%d,\t",(*clusters)[(int)tmp->sigcp][i]);
+      // }
+
+        convert_sigcp2string(*nclusters, (int)tmp->sigcp, *clusters, subgroupNumber, &me[1]);
+        // fprintf(stderr, "Output 1: \t%s\n", me[0]);
+        // fprintf(stderr, "Output 12: \t%s\n", me[1]);
         
         // tmp->methA=me[0];
         // tmp->methB=me[1]; //important!!!
@@ -2011,7 +1999,7 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
             nfo->outputList->segment_out[nfo->outputList->i].start = seg->pos[tmp->start]-1;
             // if ((tmp->stop-tmp->start+1+1)<10)
             // {
-            //   fprintf(stderr,"start1:%f,%d\n",(ks[0]),(tmp->stop-tmp->start+1));
+              // fprintf(stderr,"start1:%f,%d\n",(ks[0]),(tmp->stop-tmp->start+1));
             //   assert(0);
             // }
             
@@ -2027,7 +2015,7 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
             
             char *me[] = {"-2","-2"};
             means(seg,tmp->start,tmp->stop, groupID, groupSize, groupNumber, subgroupID, subgroupSize, subgroupNumber, &me[0], &me[1]);
-            convert_sigcp2string(tmp->sigcp, *clusters, subgroupNumber, &me[1]);
+            convert_sigcp2string(*nclusters, (int)tmp->sigcp, *clusters, subgroupNumber, &me[1]);
             nfo->outputList->segment_out[nfo->outputList->i].methA = ALLOCMEMORY(NULL, NULL, char, strlen(me[0])+1);
             nfo->outputList->segment_out[nfo->outputList->i].methB = ALLOCMEMORY(NULL, NULL, char, strlen(me[1])+1);
             nfo->outputList->segment_out[nfo->outputList->i].methA = strcpy(nfo->outputList->segment_out[nfo->outputList->i].methA,me[0]);
@@ -2047,7 +2035,7 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
 
       // if (( seg->pos[b->stop]-seg->pos[b->start]+1+1)<10)
       // {
-      //   fprintf(stderr,"start1:%f,%d\n",(b->prob),( seg->pos[b->stop]-seg->pos[b->start]+1+1));
+        // fprintf(stderr,"start12:%f,%d\n",(b->prob),( seg->pos[b->stop]-seg->pos[b->start]+1+1));
       //   assert(0);
       // }
       
@@ -2061,16 +2049,17 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
       nfo->outputList->segment_out[nfo->outputList->i].mwu = b->test;
       nfo->outputList->segment_out[nfo->outputList->i].length = (b->stop-b->start+1);
       nfo->outputList->segment_out[nfo->outputList->i].sigcp = b->sigcp;
-      
+      // fprintf(stderr,"start12:%f,%d\n",(b->prob),( seg->pos[b->stop]-seg->pos[b->start]+1+1));
       char *me[] = {"-2","-2"};
       means(seg, b->start,b->stop, groupID, groupSize, groupNumber,subgroupID, subgroupSize, subgroupNumber, &me[0], &me[1]);
-
+// fprintf(stderr,"start12:%f,%d\n",(b->prob),( seg->pos[b->stop]-seg->pos[b->start]+1+1));
       // for (int i = 0; i < subgroupNumber; i++)
       // {
-      //   fprintf(stderr, "sadfa%d,\t",clusters[(int)b->sigcp][i]);
+      //   fprintf(stderr, "sadfa%d,\t",(*clusters)[(int)b->sigcp][i]);
       // }
 
-      convert_sigcp2string(b->sigcp, *clusters, subgroupNumber, &me[1]);
+      convert_sigcp2string(*nclusters, (int)b->sigcp, *clusters, subgroupNumber, &me[1]);
+      // fprintf(stderr,"start12:%f,%d\n",(b->prob),( seg->pos[b->stop]-seg->pos[b->start]+1+1));
       nfo->outputList->segment_out[nfo->outputList->i].methA = ALLOCMEMORY(NULL, NULL, char, strlen(me[0])+1);
       nfo->outputList->segment_out[nfo->outputList->i].methB = ALLOCMEMORY(NULL, NULL, char, strlen(me[1])+1);
       nfo->outputList->segment_out[nfo->outputList->i].methA = strcpy(nfo->outputList->segment_out[nfo->outputList->i].methA,me[0]);
@@ -2083,7 +2072,7 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
           nfo->outputList->n+=1000000;
           nfo->outputList->segment_out = ALLOCMEMORY(NULL, nfo->outputList->segment_out, segment_out, nfo->outputList->n);
       }
-        
+      // fprintf(stderr,"start13:%f,%d\n",(b->prob),( seg->pos[b->stop]-seg->pos[b->start]+1+1));
     }
   }
 
@@ -2131,11 +2120,11 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
 
     if(ks[0]<2) {
         // fprintf(stderr,"NULL:\n");
-        if ((seg->pos[tmp->stop]-seg->pos[tmp->start]+1+1)<10)
-        {
-          fprintf(stderr,"start1:%f,%d\n",(ks[0]),( seg->pos[tmp->stop]-seg->pos[tmp->start]+1+1));
-          assert(0);
-        }
+        // if ((seg->pos[tmp->stop]-seg->pos[tmp->start]+1+1)<10)
+        // {
+        //   // fprintf(stderr,"start1:%f,%d\n",(ks[0]),( seg->pos[tmp->stop]-seg->pos[tmp->start]+1+1));
+        //   assert(0);
+        // }
         nfo->outputList->segment_out[nfo->outputList->i].chr = ALLOCMEMORY(NULL, NULL, char, strlen(seg->chr)+1);
         nfo->outputList->segment_out[nfo->outputList->i].chr = strcpy(nfo->outputList->segment_out[nfo->outputList->i].chr,seg->chr);
         nfo->outputList->segment_out[nfo->outputList->i].start = seg->pos[tmp->start]-1;
@@ -2151,7 +2140,7 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
         
         char *me[] = {"-2","-2"};
         means(seg, tmp->start,tmp->stop, groupID, groupSize, groupNumber, subgroupID, subgroupSize, subgroupNumber, &me[0], &me[1]);
-        convert_sigcp2string(tmp->sigcp, *clusters, subgroupNumber, &me[1]);
+        convert_sigcp2string(*nclusters, (int)tmp->sigcp, *clusters, subgroupNumber, &me[1]);
         nfo->outputList->segment_out[nfo->outputList->i].methA = ALLOCMEMORY(NULL, NULL, char, strlen(me[0])+1);
         nfo->outputList->segment_out[nfo->outputList->i].methB = ALLOCMEMORY(NULL, NULL, char, strlen(me[1])+1);
         nfo->outputList->segment_out[nfo->outputList->i].methA = strcpy(nfo->outputList->segment_out[nfo->outputList->i].methA,me[0]);
@@ -2161,7 +2150,7 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
         if(nfo->outputList->i >= nfo->outputList->n) {
             nfo->outputList->n+=1000000;
             nfo->outputList->segment_out = ALLOCMEMORY(NULL, nfo->outputList->segment_out, segment_out, nfo->outputList->n);
-            if(nfo->outputList->i>=2){fprintf(stderr,"start4:%d",nfo->outputList->segment_out[2].start);}
+            // if(nfo->outputList->i>=2){fprintf(stderr,"start4:%d",nfo->outputList->segment_out[2].start);}
         }
     }
     FREEMEMORY(NULL, tmp);
@@ -2170,6 +2159,7 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
 
   return;
 }
+
 //these variables need to be volatile to stop the compiler from optimizing
 //as they are manipulated by the threads!
 static volatile unsigned int idle;
