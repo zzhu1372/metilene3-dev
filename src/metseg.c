@@ -2795,7 +2795,7 @@ int calGroupNumber(int n, int ***grpA_subgroups, int ***grpB_subgroups, int clus
       {
         A_subgroups[ii][i] = 1;
         B_subgroups[ii][j] = 1;
-        fprintf(stdout, "# Combination %d:\tGroup A subgroups: %d,\tGroup B subgroups: %d,\n",ii,i,j);
+        // fprintf(stdout, "# Combination %d:\tGroup A subgroups: %d,\tGroup B subgroups: %d,\n",ii,i,j);
         ii++;
       }
     }
@@ -3660,21 +3660,43 @@ int main(int argc, char** argv) {
     for(int i=0;i<nfo.outputList->i;i++){
       // fprintf(stderr,"start10:%d\n",nfo.outputList->segment_out[2].start);
       // fprintf(stderr, "TEST %d: %d,%f.\n",i,nfo.outputList->segment_out[i].start,nfo.outputList->segment_out[i].meandiff);
-      if(nfo.outputList->segment_out[i].meandiff >= nfo.minMethDist || nfo.outputList->segment_out[i].meandiff <= -1* nfo.minMethDist) {
-        // fprintf(stderr, "TEST %d: %d,%d.\n",i,nfo.outputList->segment_out[i].start,nfo.outputList->segment_out[i].stop);
-        fprintf(stdout, "%s\t%d\t%d\t%.5g\t%f\t%d\t%.5g\t%.5g\t%s\t%f\n", 
-                nfo.outputList->segment_out[i].chr,
-                nfo.outputList->segment_out[i].start,
-                nfo.outputList->segment_out[i].stop,
-                nfo.outputList->segment_out[i].q,
-                nfo.outputList->segment_out[i].meandiff,
-                nfo.outputList->segment_out[i].length,                
-                nfo.outputList->segment_out[i].mwu,
-                nfo.outputList->segment_out[i].p,
-                nfo.outputList->segment_out[i].methB,
-                // nfo.outputList->segment_out[i].methB,
-                nfo.outputList->segment_out[i].sigcp);
+
+      if (nfo.clustering==1)
+      {
+        if(nfo.outputList->segment_out[i].meandiff >= nfo.minMethDist || nfo.outputList->segment_out[i].meandiff <= -1* nfo.minMethDist) {
+          // fprintf(stderr, "TEST %d: %d,%d.\n",i,nfo.outputList->segment_out[i].start,nfo.outputList->segment_out[i].stop);
+          fprintf(stdout, "%s\t%d\t%d\t%.5g\t%f\t%d\t%.5g\t%.5g\t%s\t%s\n", 
+                  nfo.outputList->segment_out[i].chr,
+                  nfo.outputList->segment_out[i].start,
+                  nfo.outputList->segment_out[i].stop,
+                  nfo.outputList->segment_out[i].q,
+                  nfo.outputList->segment_out[i].meandiff,
+                  nfo.outputList->segment_out[i].length,                
+                  nfo.outputList->segment_out[i].mwu,
+                  nfo.outputList->segment_out[i].p,
+                  nfo.outputList->segment_out[i].methA,
+                  // nfo.outputList->segment_out[i].methB,
+                  nfo.outputList->segment_out[i].methB);
+        }
+      } else {
+        if(nfo.outputList->segment_out[i].meandiff >= nfo.minMethDist || nfo.outputList->segment_out[i].meandiff <= -1* nfo.minMethDist) {
+          // fprintf(stderr, "TEST %d: %d,%d.\n",i,nfo.outputList->segment_out[i].start,nfo.outputList->segment_out[i].stop);
+          fprintf(stdout, "%s\t%d\t%d\t%.5g\t%f\t%d\t%.5g\t%.5g\t%s\t%f\n", 
+                  nfo.outputList->segment_out[i].chr,
+                  nfo.outputList->segment_out[i].start,
+                  nfo.outputList->segment_out[i].stop,
+                  nfo.outputList->segment_out[i].q,
+                  nfo.outputList->segment_out[i].meandiff,
+                  nfo.outputList->segment_out[i].length,                
+                  nfo.outputList->segment_out[i].mwu,
+                  nfo.outputList->segment_out[i].p,
+                  nfo.outputList->segment_out[i].methA,
+                  // nfo.outputList->segment_out[i].methB,
+                  nfo.outputList->segment_out[i].sigcp);
+        }
       }
+      
+      
     }
   }
     
