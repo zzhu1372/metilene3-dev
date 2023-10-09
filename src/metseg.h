@@ -84,7 +84,7 @@ typedef struct{
   int maxseg;
   int mincpgs;
   int minDMR; // newcodes: min length of one DMR
-  int minDMR2; // newcodes: min length of one DMR
+  double minDMR2; // newcodes: min length of one DMR
   int threads;
   int mode;
   int mtc;

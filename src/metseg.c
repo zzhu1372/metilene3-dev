@@ -844,7 +844,7 @@ calcSigCpGs2(double **S,int s, int t) {
   if(s==0)
     sigCpGs = S[t][4];
   else
-    sigCpGs = S[t][4]-S[s-1][4];
+    sigCpGs = (S[t][4]-S[s-1][4])/(t-s+1);
   return sigCpGs;
 }
 
@@ -1204,9 +1204,11 @@ clustering(int ***clusters, int *nclusters, int numberSubGroup, int **subgroupID
     {
       if (g==A) 
       {
+        // fprintf(stderr, "A.\n");
         (*clusters)[(*nclusters) - 1][g] = 0;
       } else if (g==B)
       {
+        // fprintf(stderr, "B.\n");
         (*clusters)[(*nclusters) - 1][g] = 2;
       } else
       {
@@ -1230,6 +1232,7 @@ clustering(int ***clusters, int *nclusters, int numberSubGroup, int **subgroupID
 
       if (calcSigCpGs2(S[newgn], s, t) < nfo->minDMR2)
       {
+        // fprintf(stderr, "A+.\n");
         (*clusters)[(*nclusters) - 1][g] -= 1;
       } 
         
@@ -1250,6 +1253,7 @@ clustering(int ***clusters, int *nclusters, int numberSubGroup, int **subgroupID
 
       if (calcSigCpGs2(S[newgn], s, t) < nfo->minDMR2)
       {
+        // fprintf(stderr, "B+.\n");
         (*clusters)[(*nclusters) - 1][g] += 1;
       } 
  
@@ -2937,7 +2941,7 @@ int main(int argc, char** argv) {
   manopt(&optset, REQDBLOPT, 0, 'w', "mindiff", 
       "minimal difference", "<n>", NULL, &nfo.mindiff);
 
-  manopt(&optset, REQUINTOPT, 0, 'e', "minDMR2", 
+  manopt(&optset, REQDBLOPT, 0, 'e', "minDMR2", 
       "minimal DMR 2", "<n>", NULL, &nfo.minDMR2);
   manopt(&optset, REQDBLOPT, 0, 'q', "mindiff2", 
       "minimal difference 2", "<n>", NULL, &nfo.mindiff2);
