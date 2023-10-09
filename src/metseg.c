@@ -722,7 +722,7 @@ void means(segment_t *seg , int a, int b, int ***groupID, int **groupSize, int g
  */
 
 double ***
-calcSingleDiffSum(segment_t *s, int ***groupID, int **groupSize, int groupNumber, double mindiff){
+calcSingleDiffSum(segment_t *s, int ***groupID, int **groupSize, int groupNumber, double mindiff, double mindiff2){
 
   int i, j;
   double ***S, s1, s2;
@@ -742,8 +742,8 @@ calcSingleDiffSum(segment_t *s, int ***groupID, int **groupSize, int groupNumber
     S[groupCombination] = ALLOCMEMORY(NULL, NULL, double*, s->n);
 
     for(i=0; i < s->n; i++) {
-      S[groupCombination][i] = ALLOCMEMORY(NULL, NULL, double, 4);
-      memset(S[groupCombination][i], 0, sizeof(double)*4);
+      S[groupCombination][i] = ALLOCMEMORY(NULL, NULL, double, 5);
+      memset(S[groupCombination][i], 0, sizeof(double)*5);
     }
 
     for(i=0; i < s->n; i++) {
@@ -777,6 +777,13 @@ calcSingleDiffSum(segment_t *s, int ***groupID, int **groupSize, int groupNumber
         } else {
           S[groupCombination][i][3] = 0;
         }
+
+        if (fabs(s1-s2)>=mindiff2)
+        {
+          S[groupCombination][i][4] = 1;
+        } else {
+          S[groupCombination][i][4] = 0;
+        }
         
 
       } else {
@@ -797,7 +804,15 @@ calcSingleDiffSum(segment_t *s, int ***groupID, int **groupSize, int groupNumber
           S[groupCombination][i][3] = S[groupCombination][i-1][3]+1;
         } else {
           S[groupCombination][i][3] = S[groupCombination][i-1][3];
-        }                 
+        } 
+
+        if (fabs(s1-s2)>=mindiff2)
+        {
+          S[groupCombination][i][4] = S[groupCombination][i-1][4]+1;
+        } else {
+          S[groupCombination][i][4] = S[groupCombination][i-1][4];
+        } 
+
       }
     }
   }
@@ -820,6 +835,16 @@ calcSigCpGs(double **S,int s, int t) {
     sigCpGs = S[t][3];
   else
     sigCpGs = S[t][3]-S[s-1][3];
+  return sigCpGs;
+}
+
+double 
+calcSigCpGs2(double **S,int s, int t) {
+  double sigCpGs; 
+  if(s==0)
+    sigCpGs = S[t][4];
+  else
+    sigCpGs = S[t][4]-S[s-1][4];
   return sigCpGs;
 }
 
@@ -1203,7 +1228,7 @@ clustering(int ***clusters, int *nclusters, int numberSubGroup, int **subgroupID
       }
       int newgn = ((2*numberSubGroup-i-1)*i/2) + (j-i-1);
 
-      if (calcSigCpGs(S[newgn], s, t) < nfo->minDMR)
+      if (calcSigCpGs2(S[newgn], s, t) < nfo->minDMR2)
       {
         (*clusters)[(*nclusters) - 1][g] -= 1;
       } 
@@ -1223,7 +1248,7 @@ clustering(int ***clusters, int *nclusters, int numberSubGroup, int **subgroupID
       }
       int newgn = ((2*numberSubGroup-i-1)*i/2) + (j-i-1);
 
-      if (calcSigCpGs(S[newgn], s, t) < nfo->minDMR)
+      if (calcSigCpGs2(S[newgn], s, t) < nfo->minDMR2)
       {
         (*clusters)[(*nclusters) - 1][g] += 1;
       } 
@@ -2207,7 +2232,7 @@ segmentation(char **chr, int *pos, double **value, int n,
   seg->pos = pos;
   seg->value = value;
 
-  S = calcSingleDiffSum(seg, groupID, groupSize, groupNumber, nfo->mindiff);
+  S = calcSingleDiffSum(seg, groupID, groupSize, groupNumber, nfo->mindiff, nfo->mindiff2);
   int existSigGn = 0;
   for (int gn = 0; gn < groupNumber; gn++)
   {
@@ -2650,6 +2675,8 @@ initProgramParams (metseg_t *nfo)
   nfo->groups = 2; // newcodes
   nfo->minDMR = 1; // newcodes
   nfo->mindiff = 0; // newcodes
+  nfo->minDMR2 = 1; // newcodes
+  nfo->mindiff2 = 0; // newcodes
   nfo->clustering = 0; // newcodes
   nfo->trend = 0.6;
   nfo->minNoA = -1;
@@ -2909,6 +2936,12 @@ int main(int argc, char** argv) {
       "minimal DMR", "<n>", NULL, &nfo.minDMR);
   manopt(&optset, REQDBLOPT, 0, 'w', "mindiff", 
       "minimal difference", "<n>", NULL, &nfo.mindiff);
+
+  manopt(&optset, REQUINTOPT, 0, 'e', "minDMR2", 
+      "minimal DMR 2", "<n>", NULL, &nfo.minDMR2);
+  manopt(&optset, REQDBLOPT, 0, 'q', "mindiff2", 
+      "minimal difference 2", "<n>", NULL, &nfo.mindiff2);
+
   manopt(&optset, REQUINTOPT, 0, 'l', "clustering", 
       "clustering or not: 0: no, 1: yes", "<n>", &modeconstraint, &nfo.clustering);
 

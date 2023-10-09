@@ -84,6 +84,7 @@ typedef struct{
   int maxseg;
   int mincpgs;
   int minDMR; // newcodes: min length of one DMR
+  int minDMR2; // newcodes: min length of one DMR
   int threads;
   int mode;
   int mtc;
@@ -91,6 +92,7 @@ typedef struct{
   // char *nameB;
   double trend;
   double mindiff; // newcodes: min difference in one CpG site
+  double mindiff2; // newcodes: min difference in one CpG site
   double minFactor; // factor for setting min number of present values
   double minMethDist;
   int minNoA; //min number of present values to fill missing numbers in group A, below discard input line
