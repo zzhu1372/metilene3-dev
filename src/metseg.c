@@ -3693,7 +3693,8 @@ int main(int argc, char** argv) {
     multiple_testing_correction(nfo.outputList, nfo.mode, nfo.mtc);
     // if(nfo.outputList->i>=2){fprintf(stderr,"start92:%d\n",nfo.outputList->segment_out[2].start);}
     fprintf(stderr, "Multiple testing correction done.\n");
-    fprintf(stdout, "chr\tstart\tstop\tq\tmeandiff\tlength\tmwu\tp\t%s\tsig.comparison\n",subgroupNames);
+    // fprintf(stdout, "chr\tstart\tstop\tq\tmeandiff\tlength\tmwu\tp\t%s\tsig.comparison\n",subgroupNames);
+    fprintf(stdout, "chr\tstart\tstop\tq\tmeandiff\tlength\tmwu\tp\tmean\tsig.comparison\n",subgroupNames);
     for(int i=0;i<nfo.outputList->i;i++){
       // fprintf(stderr,"start10:%d\n",nfo.outputList->segment_out[2].start);
       // fprintf(stderr, "TEST %d: %d,%f.\n",i,nfo.outputList->segment_out[i].start,nfo.outputList->segment_out[i].meandiff);
