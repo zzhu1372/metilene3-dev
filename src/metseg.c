@@ -1220,7 +1220,8 @@ clustering(int ***clusters, int *nclusters, int numberSubGroup, int **subgroupID
     for (int g = 0; g < numberSubGroup; g++)
     {
       int i, j;
-      if (g==A) {continue;}    
+      if (g==A) {continue;}  
+      if (g==B) {continue;}    
       if (g>A)
       {
         i = A; j = g;
@@ -1241,6 +1242,7 @@ clustering(int ***clusters, int *nclusters, int numberSubGroup, int **subgroupID
     for (int g = 0; g < numberSubGroup; g++)
     {
       int i, j;
+      if (g==A) {continue;}  
       if (g==B) {continue;}    
       if (g>B)
       {
