@@ -3179,8 +3179,18 @@ int main(int argc, char** argv) {
                 //wait for a free thread
                 while(idle == 0);
                 //look for the free slot
-                for(i=0; i < nfo.threads; i++) {
-                  if(schedule[i] == 0) break;
+                // for(i=0; i < nfo.threads; i++) {
+                //   if(schedule[i] == 0) break;
+                // }
+                int nofreeslot = 1;
+                while (nofreeslot)
+                {
+                  for(i=0; i < nfo.threads; i++) {
+                    if(schedule[i] == 0) {
+                      nofreeslot = 0;
+                      break;
+                    }
+                  }
                 }
                 //this must always hold because of idle variable
                 assert(i < nfo.threads);
@@ -3315,8 +3325,18 @@ int main(int argc, char** argv) {
                             //wait for a free thread
                             while(idle == 0);
                             //look for the free slot
-                            for(i=0; i < nfo.threads; i++) {
-                              if(schedule[i] == 0) break;
+                            // for(i=0; i < nfo.threads; i++) {
+                            //   if(schedule[i] == 0) break;
+                            // }
+                            int nofreeslot = 1;
+                            while (nofreeslot)
+                            {
+                              for(i=0; i < nfo.threads; i++) {
+                                if(schedule[i] == 0) {
+                                  nofreeslot = 0;
+                                  break;
+                                }
+                              }
                             }
                             //this must always hold because of idle variable
                             assert(i < nfo.threads);
@@ -3492,8 +3512,18 @@ int main(int argc, char** argv) {
                             //wait for a free thread
                             while(idle == 0);
                             //look for the free slot
-                            for(i=0; i < nfo.threads; i++) {
-                              if(schedule[i] == 0) break;
+                            // for(i=0; i < nfo.threads; i++) {
+                            //   if(schedule[i] == 0) break;
+                            // }
+                            int nofreeslot = 1;
+                            while (nofreeslot)
+                            {
+                              for(i=0; i < nfo.threads; i++) {
+                                if(schedule[i] == 0) {
+                                  nofreeslot = 0;
+                                  break;
+                                }
+                              }
                             }
                             //this must always hold because of idle variable
                             assert(i < nfo.threads);
@@ -3583,9 +3613,18 @@ int main(int argc, char** argv) {
           //wait for a free thread
           while(idle == 0);
           //look for the free slot
-          for(i=0; i < nfo.threads; i++) {
-            if(schedule[i] == 0) break;
+          int nofreeslot = 1;
+          while (nofreeslot)
+          {
+            for(i=0; i < nfo.threads; i++) {
+              if(schedule[i] == 0) {
+                nofreeslot = 0;
+                break;
+              }
+            }
           }
+          
+
           //this must always hold because of idle variable
           assert(i < nfo.threads);
   //        fprintf(stderr, "starting thread %d\n", i);
@@ -3619,7 +3658,7 @@ int main(int argc, char** argv) {
           th_nfo[i].outputList = nfo.outputList;
           
           
-          fprintf(stderr, "segmenting %s-[%d,%d], %u CpGs\n", chr[0], pos[0], pos[j-1], j);
+          fprintf(stderr, "Thread: %d segmenting %s-[%d,%d], %u CpGs\n", i, chr[0], pos[0], pos[j-1], j);
           //create the thread (detached!)
           pthread_create(&threads[i], &tattr, segworker, &th_nfo[i]);
           //now we must make sure that each thread keeps his own chunk
