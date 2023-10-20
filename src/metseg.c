@@ -1231,11 +1231,22 @@ clustering(int ***clusters, int *nclusters, int numberSubGroup, int **subgroupID
       }
       int newgn = ((2*numberSubGroup-i-1)*i/2) + (j-i-1);
 
-      if (calcSigCpGs2(S[newgn], s, t) < nfo->minDMR2)
+      if (nfo->minDMR2 != 1)
       {
-        // fprintf(stderr, "A+.\n");
-        (*clusters)[(*nclusters) - 1][g] -= 1;
-      } 
+        if (calcSigCpGs2(S[newgn], s, t) < nfo->minDMR2)
+        {
+          // fprintf(stderr, "A+.\n");
+          (*clusters)[(*nclusters) - 1][g] -= 1;
+        }
+      } else {
+        if (calcSigCpGs(S[newgn], s, t) < nfo->minDMR)
+        {
+          // fprintf(stderr, "A+.\n");
+          (*clusters)[(*nclusters) - 1][g] -= 1;
+        }
+      }
+      
+ 
         
     }
 
@@ -1253,11 +1264,21 @@ clustering(int ***clusters, int *nclusters, int numberSubGroup, int **subgroupID
       }
       int newgn = ((2*numberSubGroup-i-1)*i/2) + (j-i-1);
 
-      if (calcSigCpGs2(S[newgn], s, t) < nfo->minDMR2)
+      if (nfo->minDMR2 != 1)
       {
-        // fprintf(stderr, "B+.\n");
-        (*clusters)[(*nclusters) - 1][g] += 1;
-      } 
+        if (calcSigCpGs2(S[newgn], s, t) < nfo->minDMR2)
+        {
+          // fprintf(stderr, "B+.\n");
+          (*clusters)[(*nclusters) - 1][g] += 1;
+        }
+      } else {
+        if (calcSigCpGs(S[newgn], s, t) < nfo->minDMR)
+        {
+          // fprintf(stderr, "B+.\n");
+          (*clusters)[(*nclusters) - 1][g] += 1;
+        }
+      }
+
  
     }
 
@@ -2732,7 +2753,7 @@ int calGroupNumber(int n, int ***grpA_subgroups, int ***grpB_subgroups, int clus
   if (clustering==0)
   {
     int Nc = (pow(3,n)-pow(2,n+1)+1)/2; // number of possible combinations
-    fprintf(stderr, "# Combination %d\n",Nc);
+    // fprintf(stderr, "# Combination %d\n",Nc);
     int **A_subgroups;
     int **B_subgroups;
     A_subgroups = ALLOCMEMORY(NULL, NULL, int*, Nc);
@@ -2803,7 +2824,7 @@ int calGroupNumber(int n, int ***grpA_subgroups, int ***grpB_subgroups, int clus
   }
   else {
     int Nc = (n*(n-1))/2; // number of possible combinations
-    fprintf(stderr, "# Combination %d\n",Nc);
+    // fprintf(stderr, "# Combination %d\n",Nc);
     int **A_subgroups;
     int **B_subgroups;
     A_subgroups = ALLOCMEMORY(NULL, NULL, int*, Nc);
@@ -2867,6 +2888,7 @@ int main(int argc, char** argv) {
   manopt_arg *args;
   manopt_intconstraint modeconstraint;
   manopt_intconstraint mtcconstraint;
+  manopt_intconstraint clusteringconstraint;
   metseg_t nfo; // zzhu$ nfo(metseg_t): parameters for the whole process and input data.
   metseg_t *th_nfo;
   stringset_t **csv, **bedcsv; // zzhu$ input table
@@ -2887,10 +2909,11 @@ int main(int argc, char** argv) {
   modeconstraint.max = 3;
   mtcconstraint.min = 1;
   mtcconstraint.max = 2;
-
-  
+  clusteringconstraint.min = 0;
+  clusteringconstraint.max = 1;
   
   initProgramParams(&nfo);
+  int verbose = 0;
 
    //we want to detach the threads to automatically have their resources freed
   pthread_attr_init(&tattr); 
@@ -2949,7 +2972,10 @@ int main(int argc, char** argv) {
       "minimal difference 2", "<n>", NULL, &nfo.mindiff2);
 
   manopt(&optset, REQUINTOPT, 0, 'l', "clustering", 
-      "clustering or not: 0: no, 1: yes", "<n>", &modeconstraint, &nfo.clustering);
+      "clustering or not: 0: no, 1: yes", "<n>", &clusteringconstraint, &nfo.clustering);
+
+  manopt(&optset, REQUINTOPT, 0, 'p', "verbose", 
+      "print segmenting position: 0: no, 1: yes", "<n>", &clusteringconstraint, &verbose);
 
 
   args = manopt_getopts(&optset, argc, argv);
@@ -3005,21 +3031,25 @@ int main(int argc, char** argv) {
     subgroupID[i][subgroupSize[i]] = k-2;
     subgroupSize[i]++;
   }
-  for (i = 0; i < nfo.groups; i++)
-  {
-    fprintf(stderr, "Group: %d; Size: %d. The following ids belong to this group:\n", i, subgroupSize[i]);
-    for (j = 0; j < subgroupSize[i]; j++)
+
+  if(verbose){
+    for (i = 0; i < nfo.groups; i++)
     {
-      fprintf(stderr, "%u: column: %d, name:%s\n", j, subgroupID[i][j], 
-        csv[0]->strings[subgroupID[i][j]+2].str);
+      fprintf(stderr, "Group: %d; Size: %d. The following ids belong to this group:\n", i, subgroupSize[i]);
+      for (j = 0; j < subgroupSize[i]; j++)
+      {
+        fprintf(stderr, "%u: column: %d, name:%s\n", j, subgroupID[i][j], 
+          csv[0]->strings[subgroupID[i][j]+2].str);
+      }
     }
   }
+  
   concatIntsToString(&subgroupNames, subgroupNames_int, nfo.groups, '|');
-  fprintf(stderr, "Single groups %s:\n", subgroupNames);
+  // fprintf(stderr, "Single groups %s:\n", subgroupNames);
 
   // all combinations of subgroups
   // char *combinationNames = NULL;
-  fprintf(stderr, "start combination.\n");
+  if(verbose){fprintf(stderr, "start combination.\n");}
   // int groupNumber = nfo.groups*(nfo.groups-1)/2 + nfo.groups; // #one vs one + #one vs others
   int **grpA_subgroups=NULL;
   int **grpB_subgroups=NULL;
@@ -3083,22 +3113,25 @@ int main(int argc, char** argv) {
     // concatIntsToString(&tmp, combinationNames_int, nfo.groups-1, ',');
     // concatStrings(&combinationNames, tmp, '|');
     // fprintf(stderr, "CombinedGroup: %s\n", combinationNames);
+    if ((nfo.clustering == 0)&&(verbose))
+    {
+      fprintf(stderr, "CombinedGroup: %d; Size: %d. The following ids belong to the first combined group:\n", i, groupSize[0][i]);
+      for (k = 0; k < groupSize[0][i]; k++)
+      {
+        fprintf(stderr, "%u: column: %d, name:%s\n", j, groupID[0][i][k], 
+          csv[0]->strings[groupID[0][i][k]+2].str);
+      }
+      fprintf(stderr, "CombinedGroup: %d; Size: %d. The following ids belong to the second combined group:\n", i, groupSize[1][i]);
+      for (k = 0; k < groupSize[1][i]; k++)
+      {
+        fprintf(stderr, "%u: column: %d, name:%s\n", j, groupID[1][i][k], 
+          csv[0]->strings[groupID[1][i][k]+2].str);
+      }
+    }
 
-    fprintf(stderr, "CombinedGroup: %d; Size: %d. The following ids belong to the first combined group:\n", i, groupSize[0][i]);
-    for (k = 0; k < groupSize[0][i]; k++)
-    {
-      fprintf(stderr, "%u: column: %d, name:%s\n", j, groupID[0][i][k], 
-        csv[0]->strings[groupID[0][i][k]+2].str);
-    }
-    fprintf(stderr, "CombinedGroup: %d; Size: %d. The following ids belong to the second combined group:\n", i, groupSize[1][i]);
-    for (k = 0; k < groupSize[1][i]; k++)
-    {
-      fprintf(stderr, "%u: column: %d, name:%s\n", j, groupID[1][i][k], 
-        csv[0]->strings[groupID[1][i][k]+2].str);
-    }
   }
   
-  fprintf(stderr, "end combination. # of combination:%d\n", groupNumber);
+  if(verbose){fprintf(stderr, "end combination. # of combination:%d\n", groupNumber);}
   // assert(0);
 
   destructStringset(NULL, csv[0]);
@@ -3658,7 +3691,7 @@ int main(int argc, char** argv) {
           th_nfo[i].outputList = nfo.outputList;
           
           
-          fprintf(stderr, "Thread: %d segmenting %s-[%d,%d], %u CpGs\n", i, chr[0], pos[0], pos[j-1], j);
+          if(verbose){fprintf(stderr, "Thread: %d segmenting %s-[%d,%d], %u CpGs\n", i, chr[0], pos[0], pos[j-1], j);}
           //create the thread (detached!)
           pthread_create(&threads[i], &tattr, segworker, &th_nfo[i]);
           //now we must make sure that each thread keeps his own chunk
@@ -3671,7 +3704,7 @@ int main(int argc, char** argv) {
           val = NULL;
 
         } else { 
-          fprintf(stderr, "Segmenting %s-[%d,%d], %u CpGs\n", chr[0], pos[0], pos[j-1],j);
+          if(verbose){fprintf(stderr, "Segmenting %s-[%d,%d], %u CpGs\n", chr[0], pos[0], pos[j-1],j);}
           // segmentation(chr, pos, val, j, grpA, noA, grpB, noB, &nfo);
           segmentation(chr, pos, val, j, groupID, groupSize, groupNumber, subgroupID, subgroupSize, &nfo);
           for(i=0; i < j; i++) { 
@@ -3707,7 +3740,7 @@ int main(int argc, char** argv) {
       ln =readcsvlines(NULL, fi, '\t', 1, &csv);
     } 
   
-    fprintf(stderr, "segmenting %s-[%d,%d], %u CpGs \n", chr[0], pos[0], pos[j-1],j);
+    if(verbose){fprintf(stderr, "segmenting %s-[%d,%d], %u CpGs \n", chr[0], pos[0], pos[j-1],j);}
     segmentation(chr, pos, val, j, groupID, groupSize, groupNumber, subgroupID, subgroupSize, &nfo);
     for(i=0; i < j; i++) { 
         FREEMEMORY(NULL, chr[i]);
@@ -3729,11 +3762,11 @@ int main(int argc, char** argv) {
   while(idle != nfo.threads);
 
   if(nfo.mode == 1 || nfo.mode == 2) {
-    fprintf(stderr, "Number of Tests: %d\n", nfo.outputList->numberTests);
+    if(verbose){fprintf(stderr, "Number of Tests: %d\n", nfo.outputList->numberTests);}
     // if(nfo.outputList->i>=2){fprintf(stderr,"start91:%d\n",nfo.outputList->segment_out[2].start);}
     multiple_testing_correction(nfo.outputList, nfo.mode, nfo.mtc);
     // if(nfo.outputList->i>=2){fprintf(stderr,"start92:%d\n",nfo.outputList->segment_out[2].start);}
-    fprintf(stderr, "Multiple testing correction done.\n");
+    if(verbose){fprintf(stderr, "Multiple testing correction done.\n");}
     // fprintf(stdout, "chr\tstart\tstop\tq\tmeandiff\tlength\tmwu\tp\t%s\tsig.comparison\n",subgroupNames);
     fprintf(stdout, "chr\tstart\tstop\tq\tmeandiff\tlength\tmwu\tp\tmean\tsig.comparison\n",subgroupNames);
     for(int i=0;i<nfo.outputList->i;i++){
@@ -3780,9 +3813,9 @@ int main(int argc, char** argv) {
   }
     
   if(nfo.mode == 3) {
-    fprintf(stderr, "Number of Tests: %d\n", nfo.outputList->numberTests);
+    if(verbose){fprintf(stderr, "Number of Tests: %d\n", nfo.outputList->numberTests);}
     multiple_testing_correction(nfo.outputList, nfo.mode, nfo.mtc);
-    fprintf(stderr, "Multiple testing correction done.\n");
+    if(verbose){fprintf(stderr, "Multiple testing correction done.\n");}
     for(int i=0;i<nfo.outputList->i;i++){
       if(nfo.outputList->segment_out[i].meandiff >= nfo.minMethDist || nfo.outputList->segment_out[i].meandiff <= -1* nfo.minMethDist) {
         fprintf(stdout, "%s\t%d\t%d\t%.5g\t%f\t%d\t%.5g\t%s\n", 
