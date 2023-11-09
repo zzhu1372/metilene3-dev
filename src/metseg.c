@@ -2389,6 +2389,9 @@ regionTest(segment_t *seg, int ***groupID, int **groupSize, int groupNumber,
 int **subgroupID, int *subgroupSize, metseg_t *nfo) {
     double ks[] = {2,0,2,-1};
     double ks_tmp[] = {2,0,2};
+    double ***S;
+    int **clusters = NULL;
+    int nclusters = 0;
     if(seg->n>0) {
       for (int gn = 0; gn < groupNumber; gn++)
       {
@@ -2402,11 +2405,18 @@ int **subgroupID, int *subgroupSize, metseg_t *nfo) {
           ks[3] = gn;
         } 
       }
+      if (nfo->clustering == 1)
+      {
+          S = calcSingleDiffSum(seg, groupID, groupSize, groupNumber, nfo->mindiff, nfo->mindiff2);
+          clustering(&clusters, &nclusters, nfo->groups, subgroupID, subgroupSize, seg, nfo, S, ks, 0, seg->n-1);
+      }
     }
     char *me[] = {"-2","-2"};
     means(seg, 0, seg->n-1,groupID, groupSize, groupNumber, subgroupID, subgroupSize, nfo->groups, &me[0],&me[1]);
-    // convert_sigcp2string(tmp->sigcp, clusters, subgroupNumber, &me[1]);
-    
+    if (nfo->clustering == 1)
+    {
+      convert_sigcp2string(nclusters, seg->sigcp, clusters, nfo->groups, &me[1]);
+    }
 //    void kstest(segment_t *seg , int a, int b, char mindiff, char mincpgs, char test, 
 //  (segment_t *seg , int a, int b, char mindiff, char mincpgs, char test, 
 //    double *ks, int *grpA, int noA, int *grpB, int noB, metseg_t* nfo){
