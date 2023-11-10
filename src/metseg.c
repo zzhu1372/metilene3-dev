@@ -868,6 +868,19 @@ calcSingleTrendAbs(double **S,int s, int t) {
   return trend;
 }
 
+double 
+calcSingleTrendAbs2(double **S,int s, int t) {
+  double ds = s;
+  double dt=t;
+  double trend; 
+  if(s==0)
+    trend = fabs(S[t][1]);
+  else
+    trend = fabs(S[t][1]-S[s-1][1]);
+
+  return trend;
+}
+
 /*--------------------------------- noValley ---------------------------------
  *    
  * @brief check for local valley
@@ -2392,30 +2405,49 @@ int **subgroupID, int *subgroupSize, metseg_t *nfo) {
     double ***S;
     int **clusters = NULL;
     int nclusters = 0;
+    double maxZ = 0;
     if(seg->n>0) {
-      for (int gn = 0; gn < groupNumber; gn++)
-      {
-        kstest(seg , 0, seg->n-1, 0, 0, 1, ks_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
-        if (ks_tmp[0]<ks[0])
-        {
-          for (int i = 0; i < 3; i++)
-          {
-            ks[i] = ks_tmp[i];
-          }
-          ks[3] = gn;
-        } 
-      }
       if (nfo->clustering == 1)
       {
           S = calcSingleDiffSum(seg, groupID, groupSize, groupNumber, nfo->mindiff, nfo->mindiff2);
-          clustering(&clusters, &nclusters, nfo->groups, subgroupID, subgroupSize, seg, nfo, S, ks, 0, seg->n-1);
+      }
+      for (int gn = 0; gn < groupNumber; gn++)
+      {
+        if (nfo->clustering == 0)
+        {
+          kstest(seg , 0, seg->n-1, 0, 0, 1, ks_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
+          if (ks_tmp[0]<ks[0])
+          {
+            for (int i = 0; i < 3; i++)
+            {
+              ks[i] = ks_tmp[i];
+            }
+            ks[3] = gn;
+          } 
+        }
+        if (nfo->clustering == 1)
+        {
+          double newZ = calcSingleTrendAbs2(S[gn], 0, seg->n-1);
+          // fprintf(stderr,"Z%d,%f\n",gn,newZ);
+          if (maxZ<newZ)
+          {
+            maxZ = newZ;
+            ks[3] = gn;
+          } 
+        }
+      }
+      if (nfo->clustering == 1)
+      {
+        // fprintf(stderr,"ks test done%f,%f\n",ks[3],seg->sigcp);
+        clustering(&clusters, &nclusters, nfo->groups, subgroupID, subgroupSize, seg, nfo, S, ks, 0, seg->n-1);
+        // fprintf(stderr,"ks test done%f,%f\n",ks[3],seg->sigcp);
       }
     }
     char *me[] = {"-2","-2"};
     means(seg, 0, seg->n-1,groupID, groupSize, groupNumber, subgroupID, subgroupSize, nfo->groups, &me[0],&me[1]);
     if (nfo->clustering == 1)
     {
-      convert_sigcp2string(nclusters, seg->sigcp, clusters, nfo->groups, &me[1]);
+      convert_sigcp2string(nclusters, ks[3], clusters, nfo->groups, &me[1]);
     }
 //    void kstest(segment_t *seg , int a, int b, char mindiff, char mincpgs, char test, 
 //  (segment_t *seg , int a, int b, char mindiff, char mincpgs, char test, 
