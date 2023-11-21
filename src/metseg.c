@@ -842,7 +842,7 @@ double
 calcSigCpGs2(double **S,int s, int t) {
   double sigCpGs; 
   if(s==0)
-    sigCpGs = S[t][4];
+    sigCpGs = S[t][4]/(t-s+1);
   else
     sigCpGs = (S[t][4]-S[s-1][4])/(t-s+1);
   return sigCpGs;
