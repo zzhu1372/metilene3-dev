@@ -1222,10 +1222,10 @@ clustering(int ***clusters, int *nclusters, int numberSubGroup, int **subgroupID
       } else if (g==B)
       {
         // fprintf(stderr, "B.\n");
-        (*clusters)[(*nclusters) - 1][g] = 2;
+        (*clusters)[(*nclusters) - 1][g] = 4;
       } else
       {
-        (*clusters)[(*nclusters) - 1][g] = 1;
+        (*clusters)[(*nclusters) - 1][g] = 2;
       }
     }
 
@@ -1312,10 +1312,10 @@ clustering(int ***clusters, int *nclusters, int numberSubGroup, int **subgroupID
     for (int j = 0; j < numberSubGroup; j++)
     {
       int i;
-      if ((*clusters)[(*nclusters) - 1][j]==0)
+      if ((*clusters)[(*nclusters) - 1][j]<2)
       {
         i = 0;
-      }else if ((*clusters)[(*nclusters) - 1][j]==2)
+      }else if ((*clusters)[(*nclusters) - 1][j]>2)
       {
         i = 1;
       } else { continue; }
