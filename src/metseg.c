@@ -1401,7 +1401,7 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
 
     if(a != -1 && child <= 2) { 
       if(ab[0] == -1) {  // zzhu$ if ab is not calculated yet
-        int Z_max = -1;
+        double Z_max = -1;
         int ab_updated = 0; // if no KS is performed, ab will be updated with max Z
         int ab_Zmax[3] = {-1,0,-1}; // if no KS is performed, ab will be updated with max Z
 
