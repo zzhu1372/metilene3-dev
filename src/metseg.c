@@ -1560,6 +1560,13 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
 
               kstest_fake(seg, ab_tmp[1]+1, b, 0, 1, 1, ks3_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
             }
+
+            if (Z_max_tmp>Z_max)
+            {
+              ks1[3] = gn;
+              ks2[3] = gn;
+              ks3[3] = gn;
+            }
           } 
           existSigGn++;
         }
@@ -1587,71 +1594,75 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
         // fprintf(stderr,"ab:%d,%d",ab[0] ,ab[1] );
                 // re-calculate the KS for all subsegments
         if(existSigGn>0){
-          for(int gn=0;gn<groupNumber;gn++){
-            memmove(ks1_tmp, init_kstmp, sizeof(double)*3);
-            memmove(ks2_tmp, init_kstmp, sizeof(double)*3);
-            memmove(ks3_tmp, init_kstmp, sizeof(double)*3);
-            
-            // add a filter step here
-            if (calcSigCpGs(XS[gn], a, b) < nfo->minDMR)
-            {
-              continue;
-            }
-            // end a filter step here
-            
-            //check the left side of the maximum interval with ks
-            n=a; m=ab[0]-1;
-            if(ab[0] > 0 && m-n+1 >= nfo->mincpgs 
-                && calcSingleTrendAbs(XS[gn],a,ab[0]-1) > nfo->trend 
-                && noValley(XS[gn], a, ab[0]-1, nfo)) {
-
-              kstest(seg, a, ab[0]-1, 0, 1, 1, ks1_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
-            }
-
-            //check the maximum interval interval with ks
-            n=ab[0];m=ab[1];
-            if(m-n+1 >= nfo->mincpgs 
-                && calcSingleTrendAbs(XS[gn],ab[0],ab[1]) > nfo->trend 
-                && noValley(XS[gn], ab[0], ab[1], nfo) ) {
-
-              kstest(seg, ab[0], ab[1], 0, 1, 1, ks2_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
-            }
-
-            //check the right side of the maximum interval with ks
-            n=ab[1]+1;m=b;
-            if(m-n+1 >= nfo->mincpgs 
-                && calcSingleTrendAbs(XS[gn],ab[1]+1,b)> nfo->trend 
-                && noValley(XS[gn], ab[1]+1, b, nfo)) {
-              kstest(seg, ab[1]+1, b, 0, 1, 1, ks3_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
-            }
-
-            if (ks1_tmp[0]<ks1[0])
-            {
-              for ( i = 0; i < 3; i++)
+          if (nfo->clustering != 1)
+          {
+            for(int gn=0;gn<groupNumber;gn++){
+              memmove(ks1_tmp, init_kstmp, sizeof(double)*3);
+              memmove(ks2_tmp, init_kstmp, sizeof(double)*3);
+              memmove(ks3_tmp, init_kstmp, sizeof(double)*3);
+              
+              // add a filter step here
+              if (calcSigCpGs(XS[gn], a, b) < nfo->minDMR)
               {
-                ks1[i] = ks1_tmp[i];
+                continue;
               }
-              ks1[3] = gn;
-            }
+              // end a filter step here
+              
+              //check the left side of the maximum interval with ks
+              n=a; m=ab[0]-1;
+              if(ab[0] > 0 && m-n+1 >= nfo->mincpgs 
+                  && calcSingleTrendAbs(XS[gn],a,ab[0]-1) > nfo->trend 
+                  && noValley(XS[gn], a, ab[0]-1, nfo)) {
 
-            if (ks2_tmp[0]<ks2[0])
-            {
-              for ( i = 0; i < 3; i++)
-              {
-                ks2[i] = ks2_tmp[i];
+                kstest(seg, a, ab[0]-1, 0, 1, 1, ks1_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
               }
-              ks2[3] = gn;
-            }
 
-            if (ks3_tmp[0]<ks3[0])
-            {
-              for ( i = 0; i < 3; i++)
-              {
-                ks3[i] = ks3_tmp[i];
+              //check the maximum interval interval with ks
+              n=ab[0];m=ab[1];
+              if(m-n+1 >= nfo->mincpgs 
+                  && calcSingleTrendAbs(XS[gn],ab[0],ab[1]) > nfo->trend 
+                  && noValley(XS[gn], ab[0], ab[1], nfo) ) {
+
+                kstest(seg, ab[0], ab[1], 0, 1, 1, ks2_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
               }
-              ks3[3] = gn;
+
+              //check the right side of the maximum interval with ks
+              n=ab[1]+1;m=b;
+              if(m-n+1 >= nfo->mincpgs 
+                  && calcSingleTrendAbs(XS[gn],ab[1]+1,b)> nfo->trend 
+                  && noValley(XS[gn], ab[1]+1, b, nfo)) {
+                kstest(seg, ab[1]+1, b, 0, 1, 1, ks3_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
+              }
+
+              if (ks1_tmp[0]<ks1[0])
+              {
+                for ( i = 0; i < 3; i++)
+                {
+                  ks1[i] = ks1_tmp[i];
+                }
+                ks1[3] = gn;
+              }
+
+              if (ks2_tmp[0]<ks2[0])
+              {
+                for ( i = 0; i < 3; i++)
+                {
+                  ks2[i] = ks2_tmp[i];
+                }
+                ks2[3] = gn;
+              }
+
+              if (ks3_tmp[0]<ks3[0])
+              {
+                for ( i = 0; i < 3; i++)
+                {
+                  ks3[i] = ks3_tmp[i];
+                }
+                ks3[3] = gn;
+              }
             }
           }
+            
           if (nfo->clustering == 1)
           {
             // to be replaced by:
