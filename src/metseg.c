@@ -1532,42 +1532,42 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
               ab_updated = 1;
               // fprintf(stderr,"ab updated. a:%d,b:%d,ks1:%f,ks2:%f,ks3:%f\n", a,b, ks1[0],ks2[0],ks3[0]);
             }
-          } else
-          {  
-            //check the left side of the maximum interval with ks
-            n=a; m=ab_tmp[0]-1;
-            if(ab_tmp[0] > 0 && m-n+1 >= nfo->mincpgs 
-                && calcSingleTrendAbs(XS[gn],a,ab_tmp[0]-1) > nfo->trend 
-                && noValley(XS[gn], a, ab_tmp[0]-1, nfo)) {
+          } // else
+          // {  
+          //   //check the left side of the maximum interval with ks
+          //   // n=a; m=ab_tmp[0]-1;
+          //   // if(ab_tmp[0] > 0 && m-n+1 >= nfo->mincpgs 
+          //   //     && calcSingleTrendAbs(XS[gn],a,ab_tmp[0]-1) > nfo->trend 
+          //   //     && noValley(XS[gn], a, ab_tmp[0]-1, nfo)) {
 
-              kstest_fake(seg, a, ab_tmp[0]-1, 0, 1, 1, ks1_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
-            }
+          //   //   kstest_fake(seg, a, ab_tmp[0]-1, 0, 1, 1, ks1_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
+          //   // }
 
-            //check the maximum interval interval with ks
-            n=ab_tmp[0];m=ab_tmp[1];
-            if(m-n+1 >= nfo->mincpgs 
-                && calcSingleTrendAbs(XS[gn],ab_tmp[0],ab_tmp[1]) > nfo->trend 
-                && noValley(XS[gn], ab_tmp[0], ab_tmp[1], nfo) ) {
+          //   // //check the maximum interval interval with ks
+          //   // n=ab_tmp[0];m=ab_tmp[1];
+          //   // if(m-n+1 >= nfo->mincpgs 
+          //   //     && calcSingleTrendAbs(XS[gn],ab_tmp[0],ab_tmp[1]) > nfo->trend 
+          //   //     && noValley(XS[gn], ab_tmp[0], ab_tmp[1], nfo) ) {
 
-              kstest_fake(seg, ab_tmp[0], ab_tmp[1], 0, 1, 1, ks2_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
-            }
+          //   //   kstest_fake(seg, ab_tmp[0], ab_tmp[1], 0, 1, 1, ks2_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
+          //   // }
 
-            //check the right side of the maximum interval with ks
-            n=ab_tmp[1]+1;m=b;
-            if(m-n+1 >= nfo->mincpgs 
-                && calcSingleTrendAbs(XS[gn],ab_tmp[1]+1,b)> nfo->trend 
-                && noValley(XS[gn], ab_tmp[1]+1, b, nfo)) {
+          //   // //check the right side of the maximum interval with ks
+          //   // n=ab_tmp[1]+1;m=b;
+          //   // if(m-n+1 >= nfo->mincpgs 
+          //   //     && calcSingleTrendAbs(XS[gn],ab_tmp[1]+1,b)> nfo->trend 
+          //   //     && noValley(XS[gn], ab_tmp[1]+1, b, nfo)) {
 
-              kstest_fake(seg, ab_tmp[1]+1, b, 0, 1, 1, ks3_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
-            }
+          //   //   kstest_fake(seg, ab_tmp[1]+1, b, 0, 1, 1, ks3_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
+          //   // }
 
-            if (Z_max_tmp>Z_max)
-            {
-              ks1[3] = gn;
-              ks2[3] = gn;
-              ks3[3] = gn;
-            }
-          } 
+          //   if (Z_max_tmp>Z_max)
+          //   {
+          //     ks1[3] = gn;
+          //     ks2[3] = gn;
+          //     ks3[3] = gn;
+          //   }
+          // } 
           existSigGn++;
         }
 
@@ -1594,7 +1594,7 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
         // fprintf(stderr,"ab:%d,%d",ab[0] ,ab[1] );
                 // re-calculate the KS for all subsegments
         if(existSigGn>0){
-          if (nfo->clustering != 1)
+          if (nfo->clustering == 0)
           {
             for(int gn=0;gn<groupNumber;gn++){
               memmove(ks1_tmp, init_kstmp, sizeof(double)*3);
