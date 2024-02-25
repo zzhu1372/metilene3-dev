@@ -575,60 +575,6 @@ void kstest(segment_t *seg , int a, int b, char mindiff, char mincpgs, char test
   FREEMEMORY(NULL, y);
 
 }
-void kstest_fake(segment_t *seg , int a, int b, char mindiff, char mincpgs, char test, 
-    double *ks, int *grpA, int noA, int *grpB, int noB, metseg_t* nfo){
-
-  int i,j;
-  int l = b-a+1;
-  double **la;
-  double **lb;
-  double *x;
-  double *y;
-  double mean1=0;
-  double mean2=0;
-  double meandiff = 0;
-  double dl1=noA;
-  double dl2=noB;
-  double dl = l;
-  double p = 2;
-  double faskstest[2] = {0,0};
-
-  //mincpgs set to false by default so this condition is never fullfilled
-
-  // mindiff = 0;
-  // mincpgs = 0;
-  // if(l< nfo->mincpgs && mincpgs) {
-  //   ks[0]=2;ks[1]=0;ks[2]=2;
-  // }
-  //debug
-  //  fprintf(stderr, "kstest for: %d\n",l);
-  la = ALLOCMEMORY(NULL, NULL, double*, 2);
-  lb = ALLOCMEMORY(NULL, NULL, double*, 2);
-
-  la[0] = ALLOCMEMORY(NULL, NULL, double, l*noA);
-  la[1] = ALLOCMEMORY(NULL, NULL, double, l*noA);
-  lb[0] = ALLOCMEMORY(NULL, NULL, double, l*noB);
-  lb[1] = ALLOCMEMORY(NULL, NULL, double, l*noB);
-  memset(la[0], 0, sizeof(double)*l*noA);
-  memset(la[1], 0, sizeof(double)*l*noA);
-  memset(lb[0], 0, sizeof(double)*l*noB);
-  memset(lb[1], 0, sizeof(double)*l*noB);
-
-  x = ALLOCMEMORY(NULL, NULL, double, l);
-  y = ALLOCMEMORY(NULL, NULL, double, l);
-
-  ks[0]=1;ks[1]=0;ks[2]=1;
-
-  FREEMEMORY(NULL, la[0]);
-  FREEMEMORY(NULL, la[1]);
-  FREEMEMORY(NULL, lb[0]);
-  FREEMEMORY(NULL, lb[1]);
-  FREEMEMORY(NULL, la);
-  FREEMEMORY(NULL, lb);
-  FREEMEMORY(NULL, x);
-  FREEMEMORY(NULL, y);
-
-}
 
 /*---------------------------------- kstest ----------------------------------
  *    
@@ -2452,6 +2398,14 @@ int **subgroupID, int *subgroupSize, metseg_t *nfo) {
         // fprintf(stderr,"ks test done%f,%f\n",ks[3],seg->sigcp);
         clustering(&clusters, &nclusters, nfo->groups, subgroupID, subgroupSize, seg, nfo, S, ks, 0, seg->n-1);
         // fprintf(stderr,"ks test done%f,%f\n",ks[3],seg->sigcp);
+        for (int gn = 0; gn < groupNumber; gn++)
+        {
+          for (int i = 0; i < seg->n; i++)
+          {
+            FREEMEMORY(NULL, S[gn][i]);
+          }
+          FREEMEMORY(NULL, S[gn]);
+        }
       }
     }
     char *me[] = {"-2","-2"};
