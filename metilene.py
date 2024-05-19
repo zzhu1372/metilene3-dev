@@ -9,7 +9,20 @@ import pandas as pd
 parser = argparse.ArgumentParser(description='.')
 parser.add_argument('-i', "--input",)
 parser.add_argument('-o', "--output",)
-args = parser.parse_args()
+parser.add_argument('-t', "--threads",)
+
+parser.add_argument('-s', "--skipMetilene",)
+
+parser.add_argument('-m', "--mincpgs",)
+parser.add_argument('-r', "--minDMR",)
+parser.add_argument('-w', "--mindiff",)
+parser.add_argument('-e', "--minDMR2",)
+parser.add_argument('-q', "--mindiff2",)
+
+parser.add_argument('-n', "--minN0", type=int)
+parser.add_argument('-g', "--minN", type=int)
+parser.add_argument('-d', "--minNDMR", type=int)
+
 
 ###################################################################################################
 # Install
@@ -20,10 +33,15 @@ def getMetilene():
 ###################################################################################################
 # Run
 ###################################################################################################
-def runMetilene():
-    pass
+def runMetilene(args):
+    if (args.skipMetilene=='F'):
+        os.system("cd workdir; \
+                    ./metilene \
+                    -m 10 -r 5 -w 0.1 -e 0.5 -q 0.1 -d 0 -s 1 -t 10 -l 1 \
+                    input > output ")
 
-def processOutput(moutPath):
+def processOutput(args):
+    moutPath = args.input + '.res'
     mout = pd.read_table(moutPath)
     mout['meandiffabs'] = mout['meandiff'].apply(abs)
 
@@ -119,43 +137,17 @@ def recurSplit(arr, ref=0, depth=0, nsep=0, minN=2, minNDMR=100):
             
         return (finalList, depthList, weightList)
     
-def clustering(mout):
-    minN0 = 2
-    minN = 4
-    minNDMR = 100
-    def rename_cls_pn2(x):
-        if x.count('3')>x.count('1'):
-            x = x.replace('1','2')
-        elif x.count('3')<x.count('1'):
-            x = x.replace('3','2')
-        return x
-    mout = mout.loc[(mout['#U']>=minN0)\
-                    &(mout['#M']>=minN0)\
-                    &(mout['meandiffabs']>0.5)]
-    mout['sig.comparison.bin'] = mout['sig.comparison'].apply(rename_cls_pn2)
-    ranked = mout[['sig.comparison.bin','meandiffabs']].groupby('sig.comparison.bin').\
-        sum()['meandiffabs'].sort_values(ascending=False)
-    cls = recurSplit(ranked.sort_values(ascending = False), minN=minN, minNDMR=minNDMR)
-    print(cls)
-    return cls
-
-def plotFTree(cls, reportPath, sids=''):
+def plotFTree(cls, reportPath, sids):
     k = len(cls[0])
     dmrcluster_m = []
     pd.Series(cls[0]).apply(lambda x:dmrcluster_m.append(x.split('|')))
     dmrcluster_m = pd.DataFrame(dmrcluster_m)
     dmrcluster_m = dmrcluster_m.astype(float)
     
-    # dmrcluster_m.columns = sids
-    dmrcluster_m.columns = [str(i) for i in dmrcluster_m.columns]
+    dmrcluster_m.columns = sids
     dmrcluster_m = dmrcluster_m.T
-    # dmrcluster_m['grp'] = dmrcluster_m.index.map(df['Group'])
-    # dmrcluster_m['ct'] = dmrcluster_m.index.map(df['Cell type'])
     dmrcluster_m = dmrcluster_m.sort_values(list(range(len(cls[2]))))
     
-    # ids = list(dmrcluster_m.sort_values(list(range(len(cls[2])))).index+'@'+\
-    #            dmrcluster_m.sort_values(list(range(len(cls[2]))))['ct'].str.replace(' ','_').str.replace('(','<').str.replace(')','>')+\
-    #            ',')+['']
     ids = list(dmrcluster_m.sort_values(list(range(len(cls[2])))).index+',')+['']
     treestr = ids.copy()
     
@@ -182,23 +174,47 @@ def plotFTree(cls, reportPath, sids=''):
     f,a = plt.subplots(figsize=[30,15])
     Phylo.draw(tree, axes=a)
     plt.savefig(reportPath+'/tree.jpg')
+
+def clustering(mout, args):
+    minN0 = args.minN0
+    minN = args.minN
+    minNDMR = args.minNDMR
+
+    def rename_cls_pn2(x):
+        if x.count('3')>x.count('1'):
+            x = x.replace('1','2')
+        elif x.count('3')<x.count('1'):
+            x = x.replace('3','2')
+        return x
+    mout = mout.loc[(mout['#U']>=minN0)\
+                    &(mout['#M']>=minN0)\
+                    &(mout['meandiffabs']>0.5)]
+    mout['sig.comparison.bin'] = mout['sig.comparison'].apply(rename_cls_pn2)
+    ranked = mout[['sig.comparison.bin','meandiffabs']].groupby('sig.comparison.bin').\
+        sum()['meandiffabs'].sort_values(ascending=False)
+    cls = recurSplit(ranked.sort_values(ascending = False), minN=minN, minNDMR=minNDMR)
+    print(cls)
+
+    reportPath = args.output
+    sids = list(pd.read_table(args.input, nrows=0).columns[2:])
+    plotFTree(cls, reportPath, sids)
+
+    return cls
+
+
         
 ###################################################################################################
 # main
 ###################################################################################################
 def main():
+    args = parser.parse_args()
+
     getMetilene()
-    runMetilene()
-    # os.system("cd workdir; \
-    #             ./metilene \
-    #             -m 10 -r 5 -w 0.1 -e 0.5 -q 0.1 -d 0 -s 1 -t 10 -l 1 \
-    #             input > output ")
 
-    moutPath = args.input
-    print(moutPath)
-    reportPath = args.output
-    mout = processOutput(moutPath)
-    cls = clustering(mout)
-    plotFTree(cls, reportPath)
+    runMetilene(args)
+    
+    mout = processOutput(args)
 
+    clustering(mout, args)
+    
 main()
