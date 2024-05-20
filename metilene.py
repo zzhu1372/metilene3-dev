@@ -34,14 +34,22 @@ def getMetilene():
 # Run
 ###################################################################################################
 def runMetilene(args):
+    print(args.skipMetilene)
     if (args.skipMetilene=='F'):
-        os.system("cd workdir; \
+        os.system("cd ./; \
                     ./metilene \
-                    -m 10 -r 5 -w 0.1 -e 0.5 -q 0.1 -d 0 -s 1 -t 10 -l 1 \
-                    input > output ")
+                    -t "+str(args.threads)+\
+                    " -m "+str(args.mincpgs)+\
+                    " -r "+str(args.minDMR)+\
+                    " -w "+str(args.mindiff)+\
+                    " -e "+str(args.minDMR2)+\
+                    " -q "+str(args.mindiff2)+\
+                    " -d 0 -s 1 -l 1 -p 1 "+\
+                    args.input +" > "+\
+                    args.output+'/'+args.input.split('/')[-1]+'.mout' )
 
 def processOutput(args):
-    moutPath = args.input + '.res'
+    moutPath = args.output + '/' + args.input.split('/')[-1] + '.mout'
     mout = pd.read_table(moutPath)
     mout['meandiffabs'] = mout['meandiff'].apply(abs)
 
@@ -75,6 +83,7 @@ def processOutput(args):
     mout['meanP'] = mout.apply(lambda x:calmean(x['mean'],x['sig.comparison'],'2'), axis=1)
     mout['meanM'] = mout.apply(lambda x:calmean(x['mean'],x['sig.comparison'],'3'), axis=1)
     print(mout.shape)
+    mout.to_csv(args.output + '/' + args.input.split('/')[-1] + '.post.mout')
     return mout
 
 
