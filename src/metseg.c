@@ -2898,12 +2898,13 @@ int main(int argc, char** argv) {
   manopt_intconstraint clusteringconstraint;
   metseg_t nfo; // zzhu$ nfo(metseg_t): parameters for the whole process and input data.
   metseg_t *th_nfo;
-  stringset_t **csv, **bedcsv; // zzhu$ input table
-  fileiterator_t *fi, *bedfi;
-  unsigned int i, j, k, ln, bedln;
+  stringset_t **csv, **bedcsv, **headercsv; // zzhu$ input table
+  fileiterator_t *fi, *bedfi, *headerfi;
+  unsigned int i, j, k, ln, bedln, headerln;
   pthread_t *threads = NULL;
   pthread_attr_t tattr;
   char *bedfile = NULL;
+  char *headerfile = NULL;
 
 
   char **chr = NULL;
@@ -2984,6 +2985,9 @@ int main(int argc, char** argv) {
   manopt(&optset, REQUINTOPT, 0, 'p', "verbose", 
       "print segmenting position: 0: no, 1: yes", "<n>", &clusteringconstraint, &verbose);
 
+  manopt(&optset, REQSTRINGOPT, 0, 'H', "header", 
+      "header", "<string>", NULL, &headerfile);
+
 
   args = manopt_getopts(&optset, argc, argv);
   if(args->noofvalues == 1) {
@@ -3008,9 +3012,11 @@ int main(int argc, char** argv) {
   /* read header line with ids and assign to groups (prefix matches only) */
   ln = readcsvlines(NULL, fi, '\t', 1, &csv);
 
-  for(k=2; k < csv[0]->noofstrings; k++) {
+  headerfi = initFileIterator(NULL, headerfile);
+  headerln = readcsvlines(NULL, headerfi, '\t', 1, &headercsv);
+  for(k=2; k < headercsv[0]->noofstrings; k++) {
     char idstr[]="toBeReplaced";
-    strcpy(idstr, csv[0]->strings[k].str);
+    strcpy(idstr, headercsv[0]->strings[k].str);
     char *token = strtok(idstr, "_");
     int i = atoi(token);
     if (nfo.groups<(i+1))
@@ -3029,9 +3035,9 @@ int main(int argc, char** argv) {
     subgroupSize[i] = 0;
     subgroupNames_int[i] = i;
   }
-  for(k=2; k < csv[0]->noofstrings; k++) {
+  for(k=2; k < headercsv[0]->noofstrings; k++) {
     char idstr[]="toBeReplaced";
-    strcpy(idstr, csv[0]->strings[k].str);
+    strcpy(idstr, headercsv[0]->strings[k].str);
     char *token = strtok(idstr, "_");
     int i = atoi(token);
     subgroupID[i] = ALLOCMEMORY(NULL, subgroupID[i], int, subgroupSize[i]+1);
@@ -3046,7 +3052,7 @@ int main(int argc, char** argv) {
       for (j = 0; j < subgroupSize[i]; j++)
       {
         fprintf(stderr, "%u: column: %d, name:%s\n", j, subgroupID[i][j], 
-          csv[0]->strings[subgroupID[i][j]+2].str);
+          headercsv[0]->strings[subgroupID[i][j]+2].str);
       }
     }
   }
@@ -3126,13 +3132,13 @@ int main(int argc, char** argv) {
       for (k = 0; k < groupSize[0][i]; k++)
       {
         fprintf(stderr, "%u: column: %d, name:%s\n", j, groupID[0][i][k], 
-          csv[0]->strings[groupID[0][i][k]+2].str);
+          headercsv[0]->strings[groupID[0][i][k]+2].str);
       }
       fprintf(stderr, "CombinedGroup: %d; Size: %d. The following ids belong to the second combined group:\n", i, groupSize[1][i]);
       for (k = 0; k < groupSize[1][i]; k++)
       {
         fprintf(stderr, "%u: column: %d, name:%s\n", j, groupID[1][i][k], 
-          csv[0]->strings[groupID[1][i][k]+2].str);
+          headercsv[0]->strings[groupID[1][i][k]+2].str);
       }
     }
 
@@ -3143,6 +3149,8 @@ int main(int argc, char** argv) {
 
   destructStringset(NULL, csv[0]);
   FREEMEMORY(NULL, csv);
+  destructStringset(NULL, headercsv[0]);
+  FREEMEMORY(NULL, headercsv);
   
   /* init schedules and idle counter */
   idle = nfo.threads;
