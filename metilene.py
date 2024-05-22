@@ -12,16 +12,19 @@ parser.add_argument('-o', "--output",)
 parser.add_argument('-t', "--threads",)
 
 parser.add_argument('-s', "--skipMetilene",)
+parser.add_argument('-u', "--unsupervised",)
+parser.add_argument('-re', "--rerun",)
 
-parser.add_argument('-m', "--mincpgs",)
-parser.add_argument('-r', "--minDMR",)
-parser.add_argument('-w', "--mindiff",)
-parser.add_argument('-e', "--minDMR2",)
-parser.add_argument('-q', "--mindiff2",)
+parser.add_argument('-m', "--mincpgs", type=int, default=10)
+parser.add_argument('-r', "--minDMR", type=int, default=5)
+parser.add_argument('-w', "--mindiff", type=float, default=0.1)
+parser.add_argument('-wd', "--mindiff_unsup", type=float, default=0.5)
+parser.add_argument('-e', "--minDMR2", type=float, default=0.5)
+parser.add_argument('-q', "--mindiff2", type=float, default=0.5)
 
-parser.add_argument('-n', "--minN0", type=int)
-parser.add_argument('-g', "--minN", type=int)
-parser.add_argument('-d', "--minNDMR", type=int)
+parser.add_argument('-n', "--minN0", type=int, default=1)
+parser.add_argument('-g', "--minN", type=int, default=1)
+parser.add_argument('-d', "--minNDMR", type=int, default=1)
 
 
 ###################################################################################################
@@ -33,23 +36,69 @@ def getMetilene():
 ###################################################################################################
 # Run
 ###################################################################################################
-def runMetilene(args):
-    print(args.skipMetilene)
-    if (args.skipMetilene=='F'):
-        os.system("cd ./; \
-                    ./metilene \
-                    -t "+str(args.threads)+\
-                    " -m "+str(args.mincpgs)+\
-                    " -r "+str(args.minDMR)+\
-                    " -w "+str(args.mindiff)+\
-                    " -e "+str(args.minDMR2)+\
-                    " -q "+str(args.mindiff2)+\
-                    " -d 0 -s 1 -l 1 -p 1 "+\
-                    args.input +" > "+\
-                    args.output+'/'+args.input.split('/')[-1]+'.mout' )
+def preprocess(args, headerfile, ifsup, grpinfo=None):
+    if ifsup=='unsup':
+        cols = pd.read_table(args.input, nrows=0)
+        newcols = list(cols.columns)
+        print(newcols)
+        for i in range(len(newcols))[2:]:
+            newcols[i] = str(i-2)+'_'+newcols[i]
+        cols.columns = newcols
+        cols.to_csv(headerfile, sep='\t', index=False)
+    else:
+        grp = pd.read_table(grpinfo, index_col='ID')['Group']
+        grpid = {}
+        j = 0
+        for i in grp.unique():
+            grpid[i] = j
+            j += 1
+            
+        df_grpid = pd.DataFrame(pd.Series(grpid))
+        df_grpid.columns = ['Group_ID']
+        df_grpid.index.name = 'Group'
+        df_grpid.to_csv(grpinfo+'.groupID', sep='\t')
+        
+        grpdict = grp.map(grpid).to_dict()
+        cols = pd.read_table(args.input, nrows=0)
+        newcols = list(cols.columns)
+        print(newcols)
+        for i in range(len(newcols))[2:]:
+            newcols[i] = str(grpdict[newcols[i]])+'_'+newcols[i]
+        cols.columns = newcols
+        cols.to_csv(headerfile, sep='\t', index=False)
 
-def processOutput(args):
-    moutPath = args.output + '/' + args.input.split('/')[-1] + '.mout'
+def runMetilene(args, headerfile, ifsup):
+    if args.skipMetilene=='F':
+        if ifsup=='unsup':
+            os.system("~/project/metilene/insider/metilene_no2ks/metilene \
+                        -t "+str(args.threads)+\
+                        " -m "+str(args.mincpgs)+\
+                        " -r "+str(args.minDMR)+\
+                        " -w "+str(args.mindiff_unsup)+\
+                        " -e "+str(args.minDMR2)+\
+                        " -q "+str(args.mindiff2)+\
+                        " -H "+headerfile+\
+                        " -d 0 -s 1 -l 1 -p 1 "+\
+                        args.input +" > "+\
+                        args.output+'/'+args.input.split('/')[-1]+'.unsup.mout' )
+        else:
+            os.system("~/project/metilene/insider/metilene_no2ks/metilene \
+                        -t "+str(args.threads)+\
+                        " -m "+str(args.mincpgs)+\
+                        " -r "+str(args.minDMR)+\
+                        " -w "+str(args.mindiff)+\
+                        " -e "+str(args.minDMR2)+\
+                        " -q "+str(args.mindiff2)+\
+                        " -H "+headerfile+\
+                        " -d 0 -s 1 -l 1 -p 1 "+\
+                        args.input +" > "+\
+                        args.output+'/'+args.input.split('/')[-1]+'.mout' )
+
+def processOutput(args, ifsup):
+    if ifsup=='unsup':
+        moutPath = args.output + '/' + args.input.split('/')[-1] + '.unsup.mout'
+    else:
+        moutPath = args.output + '/' + args.input.split('/')[-1] + '.mout'
     mout = pd.read_table(moutPath)
     mout['meandiffabs'] = mout['meandiff'].apply(abs)
 
@@ -83,7 +132,10 @@ def processOutput(args):
     mout['meanP'] = mout.apply(lambda x:calmean(x['mean'],x['sig.comparison'],'2'), axis=1)
     mout['meanM'] = mout.apply(lambda x:calmean(x['mean'],x['sig.comparison'],'3'), axis=1)
     print(mout.shape)
-    mout.to_csv(args.output + '/' + args.input.split('/')[-1] + '.post.mout')
+    if ifsup=='unsup':
+        mout.to_csv(args.output + '/' + args.input.split('/')[-1] + '.unsup.post.mout', index=False, sep='\t')
+    else:
+        mout.to_csv(args.output + '/' + args.input.split('/')[-1] + '.post.mout', index=False, sep='\t')
     return mout
 
 
@@ -171,18 +223,18 @@ def plotFTree(cls, reportPath, sids):
                 treestr[st[j]] = treestr[st[j]].split(ids[st[j]])[0]+'('+ids[st[j]]+treestr[st[j]].split(ids[st[j]])[1]
                 treestr[ed[j]] = treestr[ed[j]].split(ids[ed[j]])[0]+ids[ed[j]]+'):'+str(cls[2][i])+','+treestr[ed[j]].split(ids[ed[j]])[1]
     
-    f = open("test.nwk", "w")
+    f = open(reportPath+".nwk", "w")
     f.write(''.join(treestr[:-1]).replace(',)',')')[:-1])
     f.close()
     
     from Bio import Phylo
     import matplotlib.pyplot as plt
     
-    tree = Phylo.read("test.nwk", "newick")
+    tree = Phylo.read(reportPath+".nwk", "newick")
 
     f,a = plt.subplots(figsize=[30,15])
     Phylo.draw(tree, axes=a)
-    plt.savefig(reportPath+'/tree.jpg')
+    plt.savefig(reportPath+'.tree.jpg')
 
 def clustering(mout, args):
     minN0 = args.minN0
@@ -204,11 +256,22 @@ def clustering(mout, args):
     cls = recurSplit(ranked.sort_values(ascending = False), minN=minN, minNDMR=minNDMR)
     print(cls)
 
-    reportPath = args.output
+    reportPath = args.output+'/'+args.input.split('/')[-1]
     sids = list(pd.read_table(args.input, nrows=0).columns[2:])
     plotFTree(cls, reportPath, sids)
-
-    return cls
+    
+    finalCls = pd.DataFrame([i.split('|') for i in cls[0]]).sum()
+    finalCls.index = sids
+    rename_cls_id = {}
+    j=0
+    for i in sorted(finalCls.unique()):
+        rename_cls_id[i] = j
+        j+=1
+    finalCls = finalCls.map(rename_cls_id)
+    finalCls = pd.DataFrame(finalCls)
+    finalCls.columns = ['Group']
+    finalCls.index.name = 'ID'
+    finalCls.to_csv(reportPath+'.clusters', sep='\t')
 
 
         
@@ -217,13 +280,23 @@ def clustering(mout, args):
 ###################################################################################################
 def main():
     args = parser.parse_args()
-
+    print(args)
     getMetilene()
 
-    runMetilene(args)
-    
-    mout = processOutput(args)
+    if args.unsupervised=='T':
+        headerfile = args.output+'/'+args.input.split('/')[-1]+'.unsup.header'
+        preprocess(args, headerfile, 'unsup')
+        runMetilene(args, headerfile, 'unsup')
+        mout = processOutput(args, 'unsup')
+        clustering(mout, args)
 
-    clustering(mout, args)
-    
+        if args.rerun=='T':
+            headerfile = args.output+'/'+args.input.split('/')[-1]+'.header'
+            preprocess(args, headerfile, 'sup', \
+                       args.output+'/'+args.input.split('/')[-1]+'.clusters')
+            runMetilene(args, headerfile, 'sup')
+            mout = processOutput(args, 'sup')
+    else:
+        pass
+        
 main()
