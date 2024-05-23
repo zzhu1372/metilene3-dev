@@ -3,6 +3,7 @@ import argparse
 import pandas as pd
 
 
+
 ###################################################################################################
 # Input
 ###################################################################################################
@@ -19,12 +20,12 @@ parser.add_argument('-m', "--mincpgs", type=int, default=10)
 parser.add_argument('-r', "--minDMR", type=int, default=5)
 parser.add_argument('-w', "--mindiff", type=float, default=0.1)
 parser.add_argument('-wd', "--mindiff_unsup", type=float, default=0.5)
-parser.add_argument('-e', "--minDMR2", type=float, default=0.5)
-parser.add_argument('-q', "--mindiff2", type=float, default=0.5)
+parser.add_argument('-e', "--mismatch", type=float, default=0.5)
 
 parser.add_argument('-n', "--minN0", type=int, default=1)
 parser.add_argument('-g', "--minN", type=int, default=1)
 parser.add_argument('-d', "--minNDMR", type=int, default=1)
+
 
 
 ###################################################################################################
@@ -32,6 +33,8 @@ parser.add_argument('-d', "--minNDMR", type=int, default=1)
 ###################################################################################################
 def getMetilene():
     pass
+
+
 
 ###################################################################################################
 # Run
@@ -67,32 +70,36 @@ def preprocess(args, headerfile, ifsup, grpinfo=None):
         cols.columns = newcols
         cols.to_csv(headerfile, sep='\t', index=False)
 
+
 def runMetilene(args, headerfile, ifsup):
-    if args.skipMetilene=='F':
-        if ifsup=='unsup':
-            os.system("~/project/metilene/insider/metilene_no2ks/metilene \
-                        -t "+str(args.threads)+\
-                        " -m "+str(args.mincpgs)+\
-                        " -r "+str(args.minDMR)+\
-                        " -w "+str(args.mindiff_unsup)+\
-                        " -e "+str(args.minDMR2)+\
-                        " -q "+str(args.mindiff2)+\
-                        " -H "+headerfile+\
-                        " -d 0 -s 1 -l 1 -p 1 "+\
-                        args.input +" > "+\
-                        args.output+'/'+args.input.split('/')[-1]+'.unsup.mout' )
-        else:
-            os.system("~/project/metilene/insider/metilene_no2ks/metilene \
-                        -t "+str(args.threads)+\
-                        " -m "+str(args.mincpgs)+\
-                        " -r "+str(args.minDMR)+\
-                        " -w "+str(args.mindiff)+\
-                        " -e "+str(args.minDMR2)+\
-                        " -q "+str(args.mindiff2)+\
-                        " -H "+headerfile+\
-                        " -d 0 -s 1 -l 1 -p 1 "+\
-                        args.input +" > "+\
-                        args.output+'/'+args.input.split('/')[-1]+'.mout' )
+    if args.skipMetilene=='T':
+        return None
+        
+    if ifsup=='unsup':
+        os.system("~/project/metilene/insider/metilene_no2ks/metilene \
+                    -t "+str(args.threads)+\
+                    " -m "+str(args.mincpgs)+\
+                    " -r "+str(args.minDMR)+\
+                    " -w "+str(args.mindiff_unsup)+\
+                    " -e "+str(args.mismatch)+\
+                    " -q "+str(args.mindiff_unsup)+\
+                    " -H "+headerfile+\
+                    " -d 0 -s 1 -l 1 -p 0 "+\
+                    args.input +" > "+\
+                    args.output+'/'+args.input.split('/')[-1]+'.unsup.mout' )
+    else:
+        os.system("~/project/metilene/insider/metilene_no2ks/metilene \
+                    -t "+str(args.threads)+\
+                    " -m "+str(args.mincpgs)+\
+                    " -r "+str(args.minDMR)+\
+                    " -w "+str(args.mindiff)+\
+                    " -e "+str(args.mismatch)+\
+                    " -q "+str(args.mindiff)+\
+                    " -H "+headerfile+\
+                    " -d 0 -s 1 -l 1 -p 0 "+\
+                    args.input +" > "+\
+                    args.output+'/'+args.input.split('/')[-1]+'.mout' )
+
 
 def processOutput(args, ifsup):
     if ifsup=='unsup':
@@ -133,10 +140,13 @@ def processOutput(args, ifsup):
     mout['meanM'] = mout.apply(lambda x:calmean(x['mean'],x['sig.comparison'],'3'), axis=1)
     print(mout.shape)
     if ifsup=='unsup':
-        mout.to_csv(args.output + '/' + args.input.split('/')[-1] + '.unsup.post.mout', index=False, sep='\t')
+        mout.to_csv(args.output + '/' + args.input.split('/')[-1] + '.unsup.post.mout', \
+                    index=False, sep='\t')
     else:
-        mout.to_csv(args.output + '/' + args.input.split('/')[-1] + '.post.mout', index=False, sep='\t')
+        mout.to_csv(args.output + '/' + args.input.split('/')[-1] + '.post.mout', \
+                    index=False, sep='\t')
     return mout
+
 
 
 ###################################################################################################
@@ -197,6 +207,7 @@ def recurSplit(arr, ref=0, depth=0, nsep=0, minN=2, minNDMR=100):
             weightList+= resRS[2]
             
         return (finalList, depthList, weightList)
+
     
 def plotFTree(cls, reportPath, sids):
     k = len(cls[0])
@@ -220,8 +231,10 @@ def plotFTree(cls, reportPath, sids):
             ed[j] = dmrcluster_m[i].astype(int).astype(str).sum().rfind(j)
             
             if st[j]!=-1:
-                treestr[st[j]] = treestr[st[j]].split(ids[st[j]])[0]+'('+ids[st[j]]+treestr[st[j]].split(ids[st[j]])[1]
-                treestr[ed[j]] = treestr[ed[j]].split(ids[ed[j]])[0]+ids[ed[j]]+'):'+str(cls[2][i])+','+treestr[ed[j]].split(ids[ed[j]])[1]
+                treestr[st[j]] = treestr[st[j]].split(ids[st[j]])[0]+'('+\
+                                    ids[st[j]]+treestr[st[j]].split(ids[st[j]])[1]
+                treestr[ed[j]] = treestr[ed[j]].split(ids[ed[j]])[0]+ids[ed[j]]+'):'+\
+                                    str(cls[2][i])+','+treestr[ed[j]].split(ids[ed[j]])[1]
     
     f = open(reportPath+".nwk", "w")
     f.write(''.join(treestr[:-1]).replace(',)',')')[:-1])
@@ -232,14 +245,16 @@ def plotFTree(cls, reportPath, sids):
     
     tree = Phylo.read(reportPath+".nwk", "newick")
 
-    f,a = plt.subplots(figsize=[30,15])
-    Phylo.draw(tree, axes=a)
+    f,a = plt.subplots(figsize=[15,len(sids)/5])
+    Phylo.draw(tree, axes=a, do_show=False)
     plt.savefig(reportPath+'.tree.jpg')
+
 
 def clustering(mout, args):
     minN0 = args.minN0
     minN = args.minN
     minNDMR = args.minNDMR
+    mindiff_unsup = args.mindiff_unsup
 
     def rename_cls_pn2(x):
         if x.count('3')>x.count('1'):
@@ -249,7 +264,7 @@ def clustering(mout, args):
         return x
     mout = mout.loc[(mout['#U']>=minN0)\
                     &(mout['#M']>=minN0)\
-                    &(mout['meandiffabs']>0.5)]
+                    &(mout['meandiffabs']>mindiff_unsup)]
     mout['sig.comparison.bin'] = mout['sig.comparison'].apply(rename_cls_pn2)
     ranked = mout[['sig.comparison.bin','meandiffabs']].groupby('sig.comparison.bin').\
         sum()['meandiffabs'].sort_values(ascending=False)
@@ -290,12 +305,15 @@ def main():
         mout = processOutput(args, 'unsup')
         clustering(mout, args)
 
-        if args.rerun=='T':
-            headerfile = args.output+'/'+args.input.split('/')[-1]+'.header'
-            preprocess(args, headerfile, 'sup', \
-                       args.output+'/'+args.input.split('/')[-1]+'.clusters')
-            runMetilene(args, headerfile, 'sup')
-            mout = processOutput(args, 'sup')
+        if args.rerun=='F':
+            return None
+        
+        headerfile = args.output+'/'+args.input.split('/')[-1]+'.header'
+        preprocess(args, headerfile, 'sup', \
+                   args.output+'/'+args.input.split('/')[-1]+'.clusters')
+        runMetilene(args, headerfile, 'sup')
+        mout = processOutput(args, 'sup')
+        
     else:
         pass
         
