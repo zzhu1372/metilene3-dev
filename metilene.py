@@ -14,6 +14,7 @@ parser.add_argument('-t', "--threads",)
 
 parser.add_argument('-s', "--skipMetilene",)
 parser.add_argument('-u', "--unsupervised",)
+parser.add_argument('-gr', "--groupinfo",)
 parser.add_argument('-re', "--rerun",)
 
 parser.add_argument('-m', "--mincpgs", type=int, default=10)
@@ -32,7 +33,7 @@ parser.add_argument('-d', "--minNDMR", type=int, default=1)
 # Install
 ###################################################################################################
 def getMetilene():
-    pass
+    os.system("cd "+os.path.realpath(__file__)[:-len('metilene.py')]+";make")
 
 
 
@@ -75,9 +76,9 @@ def preprocess(args, headerfile, ifsup, grpinfo=None):
 def runMetilene(args, headerfile, ifsup):
     if args.skipMetilene=='T':
         return None
-        
+    print(os.path.realpath(__file__))
     if ifsup=='unsup':
-        os.system("~/project/metilene/insider/metilene_no2ks/metilene \
+        os.system(os.path.realpath(__file__)[:-3]+" \
                     -t "+str(args.threads)+\
                     " -m "+str(args.mincpgs)+\
                     " -r "+str(args.minDMR)+\
@@ -85,12 +86,12 @@ def runMetilene(args, headerfile, ifsup):
                     " -e "+str(args.mismatch)+\
                     " -q "+str(args.mindiff_unsup)+\
                     " -H "+headerfile+\
-                    " -d 0 -s 1 -l 1 -p 0 "+\
+                    " -d 0 -s 1 -l 1 -p 1 "+\
                     args.input +" > "+\
                     args.output+'/'+args.input.split('/')[-1]+'.unsup.mout' )
 
     else:
-        os.system("~/project/metilene/insider/metilene_no2ks/metilene \
+        os.system(os.path.realpath(__file__)[:-3]+" \
                     -t "+str(args.threads)+\
                     " -m "+str(args.mincpgs)+\
                     " -r "+str(args.minDMR)+\
@@ -98,7 +99,7 @@ def runMetilene(args, headerfile, ifsup):
                     " -e "+str(args.mismatch)+\
                     " -q "+str(args.mindiff)+\
                     " -H "+headerfile+\
-                    " -d 0 -s 1 -l 1 -p 0 "+\
+                    " -d 0 -s 1 -l 1 -p 1 "+\
                     args.input +" > "+\
                     args.output+'/'+args.input.split('/')[-1]+'.mout' )
 
@@ -317,6 +318,11 @@ def main():
         mout = processOutput(args, 'sup')
         
     else:
-        pass
+        headerfile = args.output+'/'+args.input.split('/')[-1]+'.header'
+        preprocess(args, headerfile, 'sup', \
+                   args.groupinfo)
+        runMetilene(args, headerfile, 'sup')
+        mout = processOutput(args, 'sup')
+        
         
 main()
