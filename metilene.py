@@ -53,7 +53,7 @@ def preprocess(args, headerfile, ifsup, grpinfo=None):
         grp = pd.read_table(grpinfo, index_col='ID')['Group']
         grpid = {}
         j = 0
-        for i in grp.unique().sort_values():
+        for i in sorted(grp.unique()):
             grpid[i] = j
             j += 1
             
@@ -77,17 +77,6 @@ def runMetilene(args, headerfile, ifsup):
         return None
         
     if ifsup=='unsup':
-        print("~/project/metilene/insider/metilene_no2ks/metilene \
-                    -t "+str(args.threads)+\
-                    " -m "+str(args.mincpgs)+\
-                    " -r "+str(args.minDMR)+\
-                    " -w "+str(args.mindiff_unsup)+\
-                    " -e "+str(args.mismatch)+\
-                    " -q "+str(args.mindiff_unsup)+\
-                    " -H "+headerfile+\
-                    " -d 0 -s 1 -l 1 -p 0 "+\
-                    args.input +" > "+\
-                    args.output+'/'+args.input.split('/')[-1]+'.unsup.mout' )
         os.system("~/project/metilene/insider/metilene_no2ks/metilene \
                     -t "+str(args.threads)+\
                     " -m "+str(args.mincpgs)+\
@@ -99,6 +88,7 @@ def runMetilene(args, headerfile, ifsup):
                     " -d 0 -s 1 -l 1 -p 0 "+\
                     args.input +" > "+\
                     args.output+'/'+args.input.split('/')[-1]+'.unsup.mout' )
+
     else:
         os.system("~/project/metilene/insider/metilene_no2ks/metilene \
                     -t "+str(args.threads)+\
