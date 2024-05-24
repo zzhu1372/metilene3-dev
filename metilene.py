@@ -67,7 +67,7 @@ def preprocess(args, headerfile, ifsup, grpinfo=None):
         newcols = list(cols.columns)
         print(newcols)
         for i in range(len(newcols))[2:]:
-            newcols[i] = str(grpdict[newcols[i]])+'_'+newcols[i]
+            newcols[i] = str(grpdict[newcols[i]])+'_Sample'+str(i-2)#+'_'+newcols[i]
         cols.columns = newcols
         cols.to_csv(headerfile, sep='\t', index=False)
 
