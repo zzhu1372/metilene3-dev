@@ -45,14 +45,15 @@ def preprocess(args, headerfile, ifsup, grpinfo=None):
         newcols = list(cols.columns)
         print(newcols)
         for i in range(len(newcols))[2:]:
-            newcols[i] = str(i-2)+'_'+newcols[i]
+            newcols[i] = str(i-2)+'_Sample'+str(i-2)
         cols.columns = newcols
         cols.to_csv(headerfile, sep='\t', index=False)
+        
     else:
         grp = pd.read_table(grpinfo, index_col='ID')['Group']
         grpid = {}
         j = 0
-        for i in grp.unique():
+        for i in grp.unique().sort_values():
             grpid[i] = j
             j += 1
             
@@ -76,6 +77,17 @@ def runMetilene(args, headerfile, ifsup):
         return None
         
     if ifsup=='unsup':
+        print("~/project/metilene/insider/metilene_no2ks/metilene \
+                    -t "+str(args.threads)+\
+                    " -m "+str(args.mincpgs)+\
+                    " -r "+str(args.minDMR)+\
+                    " -w "+str(args.mindiff_unsup)+\
+                    " -e "+str(args.mismatch)+\
+                    " -q "+str(args.mindiff_unsup)+\
+                    " -H "+headerfile+\
+                    " -d 0 -s 1 -l 1 -p 0 "+\
+                    args.input +" > "+\
+                    args.output+'/'+args.input.split('/')[-1]+'.unsup.mout' )
         os.system("~/project/metilene/insider/metilene_no2ks/metilene \
                     -t "+str(args.threads)+\
                     " -m "+str(args.mincpgs)+\
