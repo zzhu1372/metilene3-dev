@@ -1,6 +1,15 @@
 README file for metilene
 
+INSTALL
+==============
+1. Get python packages
+pip install pandas matplotlib biopython
+
+2. Compile
+python /path_to_metilene/metilene.py -compile
+or 
+cd /path_to_metilene;make
+
 RUN METILENE
 ==============
-cd /path
-python metilene.py -i {input} -o ./{output_dir}
+python /path_to_metilene/metilene.py -i {input} -o ./{output_dir}
