@@ -1,8 +1,10 @@
 import os
+import sys
+import time
 import argparse
 import pandas as pd
 
-
+metilene_ver = 2.0
 
 ###################################################################################################
 # Input
@@ -248,7 +250,7 @@ def plotFTree(cls, reportPath, sids):
     
     tree = Phylo.read(reportPath+".nwk", "newick")
 
-    f,a = plt.subplots(figsize=[15,len(sids)/5])
+    f,a = plt.subplots(figsize=[20,len(sids)/5])
     Phylo.draw(tree, axes=a, do_show=False)
     plt.savefig(reportPath+'.tree.jpg')
 
@@ -290,13 +292,45 @@ def clustering(mout, args):
     finalCls.columns = ['Group']
     finalCls.index.name = 'ID'
     finalCls.to_csv(reportPath+'.clusters', sep='\t')
+    
+    return finalCls
 
 
-        
+
+###################################################################################################
+# Run
+###################################################################################################
+def report(args, start_time, end_time, unmout, finalCls, mout):
+    with open(os.path.realpath(__file__)[:-len('metilene.py')]+'template.html', 'r') as template_file:
+        template_content = template_file.read()
+
+    final_html = template_content.replace('<h2>Metilene Report for XXX</h2>', '<h2>Metilene Report for '+args.input.split('/')[-1]+'</h2>')
+    final_html = final_html.replace('<div>Version: XXX</div><br>', '<div>Version: '+str(metilene_ver)+'</div><br>')
+    final_html = final_html.replace('<div>Command: XXX</div><br>', '<div>Command: '+''.join([i+' ' for i in sys.argv])+'</div><br>')
+    final_html = final_html.replace('<div>Parameters: XXX</div><br>', '<div>Parameters: <br>'+str(args).split('Namespace')[-1][1:-1]+'</div><br>')
+    final_html = final_html.replace('<div>Start time: XXX</div><br>', '<div>Start time: '+str(start_time)+'</div>')
+    final_html = final_html.replace('<div>End time: XXX</div><br>', 'End time: '+str(end_time)+'</div><br>')
+
+    final_html = final_html.replace('<div>Number of unsupervised DMRs: XXX</div><br>', 'Number of unsupervised DMRs: '+str(unmout.shape[0])+'</div><br>')
+    final_html = final_html.replace('<div>Number of clusters: XXX</div><br>', 'Number of clusters: '+str(len(finalCls['Group'].unique()))+'</div><br>')
+    final_html = final_html.replace('./clstree.png', args.output+'/'+args.input.split('/')[-1]+'.tree.jpg')
+
+    final_html = final_html.replace('<div>Number of supervised DMRs: XXX</div><br>', 'Number of supervised DMRs: '+str(mout.shape[0])+'</div><br>')
+
+    table_html = mout.groupby('sig.comparison').count()[['p']].sort_values('p', ascending=False)[:10].to_html()
+    final_html = final_html.replace('<div id="pandas_table_placeholder"></div>', table_html)
+    
+    with open(args.output+'/'+args.input.split('/')[-1]+'.report.html', 'w') as final_file:
+        final_file.write(final_html)
+
+
+
 ###################################################################################################
 # main
 ###################################################################################################
 def main():
+    start_time = time.localtime()
+    
     args = parser.parse_args()
     print(args)
     getMetilene()
@@ -305,8 +339,8 @@ def main():
         headerfile = args.output+'/'+args.input.split('/')[-1]+'.unsup.header'
         preprocess(args, headerfile, 'unsup')
         runMetilene(args, headerfile, 'unsup')
-        mout = processOutput(args, 'unsup')
-        clustering(mout, args)
+        unmout = processOutput(args, 'unsup')
+        finalCls = clustering(unmout, args)
 
         if args.rerun=='F':
             return None
@@ -316,7 +350,10 @@ def main():
                    args.output+'/'+args.input.split('/')[-1]+'.clusters')
         runMetilene(args, headerfile, 'sup')
         mout = processOutput(args, 'sup')
-        
+
+        end_time = time.localtime()
+        report(args, start_time, end_time, unmout, finalCls, mout)
+    
     else:
         headerfile = args.output+'/'+args.input.split('/')[-1]+'.header'
         preprocess(args, headerfile, 'sup', \
