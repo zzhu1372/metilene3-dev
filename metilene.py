@@ -18,11 +18,13 @@ parser.add_argument('-s', "--skipMetilene",)
 parser.add_argument('-u', "--unsupervised",)
 parser.add_argument('-gr', "--groupinfo",)
 parser.add_argument('-re', "--rerun",)
+parser.add_argument('-gmt', "--gmt",)
 
 parser.add_argument('-m', "--mincpgs", type=int, default=10)
 parser.add_argument('-r', "--minDMR", type=int, default=5)
 parser.add_argument('-w', "--mindiff", type=float, default=0.1)
 parser.add_argument('-wd', "--mindiff_unsup", type=float, default=0.5)
+parser.add_argument('-wg', "--mindiff_gsea", type=float, default=0.5)
 parser.add_argument('-e', "--mismatch", type=float, default=0.5)
 
 parser.add_argument('-n', "--minN0", type=int, default=1)
@@ -106,7 +108,33 @@ def runMetilene(args, headerfile, ifsup):
                     args.output+'/'+args.input.split('/')[-1]+'.mout' )
 
 
-def processOutput(args, ifsup):
+def chipseeker(mout, moutPath):
+    cmd = "require(TxDb.Hsapiens.UCSC.hg19.knownGene);require(ChIPseeker);"+\
+    "peakfile=\'"+str(os.getcwd())+"/"+moutPath+".bed\';"+\
+    "txdb<-TxDb.Hsapiens.UCSC.hg19.knownGene;"+\
+    "peakAnno <- annotatePeak(peakfile, tssRegion=c(-3000, 1000), TxDb=txdb, annoDb=\'org.Hs.eg.db\');"+\
+    "write.csv(as.GRanges(peakAnno), \'"+str(os.getcwd())+"/"+moutPath+".bed.csv\')"
+    
+    mout.sort_values(['chr','start','stop',])[['chr','start','stop']].to_csv(\
+    str(os.getcwd())+"/"+moutPath+".bed",sep='\t',index=False,header=None)
+    
+    os.system('Rscript -e \"'+cmd+'\"')
+    
+    annoed = pd.read_csv(str(os.getcwd())+"/"+moutPath+".bed.csv", index_col=0)
+    
+    os.remove(str(os.getcwd())+"/"+moutPath+".bed")
+    os.remove(str(os.getcwd())+"/"+moutPath+".bed.csv")
+    
+    annoed.index = annoed['seqnames']+':'+annoed['start'].astype(str)+'-'+annoed['end'].astype(str)
+    annoed['anno'] = annoed['annotation'].apply(lambda x:x.split(' (')[0])
+    
+    for i in ['distanceToTSS','ENSEMBL','SYMBOL','anno']:
+        mout[i] = (mout['chr']+':'+(mout['start']+1).astype(str)+'-'+mout['stop'].astype(str)).map(annoed[i])
+        
+    return mout
+
+
+def processOutput(args, ifsup, anno='F'):
     if ifsup=='unsup':
         moutPath = args.output + '/' + args.input.split('/')[-1] + '.unsup.mout'
     else:
@@ -140,16 +168,22 @@ def processOutput(args, ifsup):
             return s/n
         except:
             return None
+            
     mout['meanU'] = mout.apply(lambda x:calmean(x['mean'],x['sig.comparison'],'1'), axis=1)
     mout['meanP'] = mout.apply(lambda x:calmean(x['mean'],x['sig.comparison'],'2'), axis=1)
     mout['meanM'] = mout.apply(lambda x:calmean(x['mean'],x['sig.comparison'],'3'), axis=1)
     print(mout.shape)
+    
+    if anno == 'T':
+        mout = chipseeker(mout, moutPath)
+        
     if ifsup=='unsup':
         mout.to_csv(args.output + '/' + args.input.split('/')[-1] + '.unsup.post.mout', \
                     index=False, sep='\t')
     else:
         mout.to_csv(args.output + '/' + args.input.split('/')[-1] + '.post.mout', \
                     index=False, sep='\t')
+                    
     return mout
 
 
@@ -317,8 +351,33 @@ def report(args, start_time, end_time, unmout, finalCls, mout):
 
     final_html = final_html.replace('<div>Number of supervised DMRs: XXX</div><br>', 'Number of supervised DMRs: '+str(mout.shape[0])+'</div><br>')
 
-    table_html = mout.groupby('sig.comparison').count()[['p']].sort_values('p', ascending=False)[:10].to_html()
+    table = mout.groupby('sig.comparison').count()[['p']].sort_values('p', ascending=False)[:10]
+    gseapopup = ''
+    j = 0
+    for i in table.index:
+        import gseapy as gp
+        gene_sets = args.gmt
+        gene_list = list(set(mout.loc[(mout['sig.comparison']==i)&(mout['meandiffabs']>args.mindiff_gsea)]['SYMBOL'].dropna()))
+        enr = gp.enrichr(gene_list=gene_list,
+                     gene_sets=gene_sets,
+                     organism='human',
+                     outdir=args.output+'/'+args.input.split('/')[-1]+'.gsea/'+i.replace('|','_'),
+                     cutoff = 1,
+                     format = 'jpg',
+                    )
+                    
+        fig_path = args.output+'/'+args.input.split('/')[-1]+'.gsea/'+i.replace('|','_')+\
+                    "/"+args.gmt.split('/')[-1]+".human.enrichr.reports.jpg"
+                    
+        gseapopup += "<div id=\"popupgsea"+str(j)+"\" class=\"popup\"><p>GSEA:</p><img src="+fig_path+" height=\"200\"><br><br><button onclick=\"hidePopup('popupgsea"+str(j)+"')\">Close</button></div>\n"
+        j+=1
+        
+    table['GSEA'] = ["<button onclick=\"showPopup('popupgsea"+str(i)+"')\">Click to show GSEA results</button>" \
+                    for i in range(table.shape[0])]
+    
+    table_html = table.to_html(escape=False)
     final_html = final_html.replace('<div id="pandas_table_placeholder"></div>', table_html)
+    final_html = final_html.replace('<div id="gsea_placeholder"></div>', gseapopup)
     
     with open(args.output+'/'+args.input.split('/')[-1]+'.report.html', 'w') as final_file:
         final_file.write(final_html)
@@ -349,7 +408,7 @@ def main():
         preprocess(args, headerfile, 'sup', \
                    args.output+'/'+args.input.split('/')[-1]+'.clusters')
         runMetilene(args, headerfile, 'sup')
-        mout = processOutput(args, 'sup')
+        mout = processOutput(args, 'sup', anno='T')
 
         end_time = time.localtime()
         report(args, start_time, end_time, unmout, finalCls, mout)
@@ -359,7 +418,7 @@ def main():
         preprocess(args, headerfile, 'sup', \
                    args.groupinfo)
         runMetilene(args, headerfile, 'sup')
-        mout = processOutput(args, 'sup')
+        mout = processOutput(args, 'sup', anno='T')
         
         
 main()
