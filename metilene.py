@@ -123,7 +123,7 @@ def runMetilene(args, headerfile, ifsup):
             os.system("rm "+args.output+'/'+args.input.split('/')[-1]+'.aout')
             
         else:
-            os.system("mv "+ args.output+'/'+args.input.split('/')[-1]+'.aout' + \
+            os.system("mv "+ args.output+'/'+args.input.split('/')[-1]+'.aout ' + \
             args.output+'/'+args.input.split('/')[-1]+'.mout')
 
 
@@ -365,7 +365,10 @@ def report(args, start_time, end_time, unmout, finalCls, mout):
     final_html = final_html.replace('<div>End time: XXX</div><br>', 'End time: '+str(end_time)+'</div><br>')
 
     final_html = final_html.replace('<div>Number of unsupervised DMRs: XXX</div><br>', 'Number of unsupervised DMRs: '+str(unmout.shape[0])+'</div><br>')
+    
     final_html = final_html.replace('<div>Number of clusters: XXX</div><br>', 'Number of clusters: '+str(len(finalCls['Group'].unique()))+'</div><br>')
+    cls_table_html = pd.read_table(args.output+'/'+args.input.split('/')[-1]+'.clusters').to_html(escape=False)
+    final_html = final_html.replace('<div id="pandas_table_placeholder_cluster"></div>', cls_table_html)
     final_html = final_html.replace('./clstree.png', args.output+'/'+args.input.split('/')[-1]+'.tree.jpg')
 
     final_html = final_html.replace('<div>Number of supervised DMRs: XXX</div><br>', 'Number of supervised DMRs: '+str(mout.shape[0])+'</div><br>')
@@ -399,7 +402,7 @@ def report(args, start_time, end_time, unmout, finalCls, mout):
                     for i in range(table.shape[0])]
     
     table_html = table.to_html(escape=False)
-    final_html = final_html.replace('<div id="pandas_table_placeholder"></div>', table_html)
+    final_html = final_html.replace('<div id="pandas_table_placeholder_dmr"></div>', table_html)
     final_html = final_html.replace('<div id="gsea_placeholder"></div>', gseapopup)
     
     with open(args.output+'/'+args.input.split('/')[-1]+'.report.html', 'w') as final_file:
