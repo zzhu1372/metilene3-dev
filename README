@@ -1,15 +1,26 @@
 README file for metilene
 
+
 INSTALL
 ==============
-1. Get python packages
-pip install pandas matplotlib biopython
+1. Get Python3 packages
+pip install pandas matplotlib biopython gseapy
+or
+pip3 install pandas matplotlib biopython gseapy
 
-2. Compile
-python /path_to_metilene/metilene.py -compile
-or 
+2. Get R packages
+Run the following in R:
+'''
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install("TxDb.Hsapiens.UCSC.hg19.knownGene")
+BiocManager::install("ChIPseeker")
+'''
+
+3. Compile
 cd /path_to_metilene;make
+
 
 RUN METILENE
 ==============
-python /path_to_metilene/metilene.py -i {input} -o ./{output_dir}
+python3 /path_to_metilene/metilene.py -i {input} -o ./{output_dir}
