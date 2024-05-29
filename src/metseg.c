@@ -605,6 +605,29 @@ void concatFloatsToString(char **x, float *y, size_t size, char sep) {
     }
 }
 
+void outputImputedValues(char **x, double *y, size_t size, char sep) {
+    int n_useless = 2;
+    size_t total_length = 0;
+    for (size_t i = 0; i < (size-n_useless); ++i) {
+        total_length += snprintf(NULL, 0, "%.3f", y[i+n_useless]) + 1;
+    }
+    total_length -= 1;
+
+    *x = (char *)malloc(total_length + 1);
+
+    char *ptr = *x;
+    for (size_t i = 0; i < (size-n_useless); ++i) {
+        int written = snprintf(ptr, total_length + 1, "%.3f", y[i+n_useless]);
+        ptr += written;
+        total_length -= written;
+        if (total_length > 0) {
+          *ptr = sep;
+          ++ptr;
+          --total_length;
+        }
+    }
+}
+
 void means(segment_t *seg , int a, int b, int ***groupID, int **groupSize, int groupNumber, int **subgroupID, int *subgroupSize, int subgroupNumber, char **meansA, char **meansB){
 
   int i,j;
@@ -2712,6 +2735,7 @@ initProgramParams (metseg_t *nfo)
   nfo->minDMR2 = 1; // newcodes
   nfo->mindiff2 = 0; // newcodes
   nfo->clustering = 0; // newcodes
+  nfo->outputImputed = 0; // newcodes
   nfo->trend = 0.6;
   nfo->minNoA = -1;
   nfo->minNoB = -1;
@@ -2988,6 +3012,9 @@ int main(int argc, char** argv) {
   manopt(&optset, REQSTRINGOPT, 0, 'H', "header", 
       "header", "<string>", NULL, &headerfile);
 
+  manopt(&optset, REQUINTOPT, 0, 'O', "outputImputed", 
+      "output the matrix with imputed values: 0: no, 1: yes", "<n>", &clusteringconstraint, &nfo.outputImputed);
+
 
   args = manopt_getopts(&optset, argc, argv);
   if(args->noofvalues == 1) {
@@ -3200,6 +3227,18 @@ int main(int argc, char** argv) {
                 ln = readcsvlines(NULL, fi, '\t', 1, &csv);
                 FREEMEMORY(NULL, values); 
                 continue;
+            } else {
+              if (nfo.outputImputed==1){
+                char *subtmp =NULL;
+                outputImputedValues(&subtmp, values, csv[0]->noofstrings, '\t');
+                fprintf(stdout,"//Imputed:");
+                fprintf(stdout, my_strdup(csv[0]->strings[0].str));
+                fprintf(stdout,"\t");
+                fprintf(stdout, csv[0]->strings[1].str);
+                fprintf(stdout,"\t");
+                fprintf(stdout, subtmp);
+                fprintf(stdout,"\n");
+              }
             }
 
             cpg_t *cpg = ALLOCMEMORY(NULL, NULL, cpg_t, 1);
@@ -3347,6 +3386,18 @@ int main(int argc, char** argv) {
                 ln = readcsvlines(NULL, fi, '\t', 1, &csv);
                 FREEMEMORY(NULL, values); 
                 continue;
+            } else {
+              if (nfo.outputImputed==1){
+                char *subtmp =NULL;
+                outputImputedValues(&subtmp, values, csv[0]->noofstrings, '\t');
+                fprintf(stdout,"//Imputed:");
+                fprintf(stdout, my_strdup(csv[0]->strings[0].str));
+                fprintf(stdout,"\t");
+                fprintf(stdout, csv[0]->strings[1].str);
+                fprintf(stdout,"\t");
+                fprintf(stdout, subtmp);
+                fprintf(stdout,"\n");
+              }
             }
          
           
@@ -3650,6 +3701,17 @@ int main(int argc, char** argv) {
         }
         else {
     //            fprintf(stdout,"#LINE OKAY \n");
+              if (nfo.outputImputed==1){
+                char *subtmp =NULL;
+                outputImputedValues(&subtmp, values, csv[0]->noofstrings, '\t');
+                fprintf(stdout,"//Imputed:");
+                fprintf(stdout, my_strdup(csv[0]->strings[0].str));
+                fprintf(stdout,"\t");
+                fprintf(stdout, csv[0]->strings[1].str);
+                fprintf(stdout,"\t");
+                fprintf(stdout, subtmp);
+                fprintf(stdout,"\n");
+              }
         }
       char *x = my_strdup(csv[0]->strings[0].str); //zzhu$ x: chromosome in current line
       int y = atoi(csv[0]->strings[1].str); //zzhu$ y: CpG position in current line

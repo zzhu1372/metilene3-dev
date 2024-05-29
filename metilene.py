@@ -15,6 +15,7 @@ parser.add_argument('-o', "--output",)
 parser.add_argument('-t', "--threads",)
 
 parser.add_argument('-s', "--skipMetilene",)
+parser.add_argument('-om', "--outputImputed",)
 parser.add_argument('-u', "--unsupervised",)
 parser.add_argument('-gr', "--groupinfo",)
 parser.add_argument('-re', "--rerun",)
@@ -103,9 +104,27 @@ def runMetilene(args, headerfile, ifsup):
                     " -e "+str(args.mismatch)+\
                     " -q "+str(args.mindiff)+\
                     " -H "+headerfile+\
-                    " -d 0 -s 1 -l 1 -p 1 "+\
+                    " -d 0 -s 1 -l 1 -p 1 -O "+str(1*(args.outputImputed=='T'))+' '+\
                     args.input +" > "+\
-                    args.output+'/'+args.input.split('/')[-1]+'.mout' )
+                    args.output+'/'+args.input.split('/')[-1]+'.aout' )
+                    
+        if args.outputImputed=='T':
+            os.system("grep -v \'//Imputed:\' "+\
+            args.output+'/'+args.input.split('/')[-1]+'.aout >' + \
+            args.output+'/'+args.input.split('/')[-1]+'.mout')
+            
+            os.system("head -n1 "+args.input+" > "+\
+                        args.output+'/'+args.input.split('/')[-1]+'.imputed')
+                        
+            os.system("grep \'//Imputed:\' "+\
+            args.output+'/'+args.input.split('/')[-1]+".aout|sed \"s/\/\/Imputed://\" >>" + \
+            args.output+'/'+args.input.split('/')[-1]+'.imputed')
+            
+            os.system("rm "+args.output+'/'+args.input.split('/')[-1]+'.aout')
+            
+        else:
+            os.system("mv "+ args.output+'/'+args.input.split('/')[-1]+'.aout' + \
+            args.output+'/'+args.input.split('/')[-1]+'.mout')
 
 
 def chipseeker(mout, moutPath):
@@ -358,13 +377,17 @@ def report(args, start_time, end_time, unmout, finalCls, mout):
         import gseapy as gp
         gene_sets = args.gmt
         gene_list = list(set(mout.loc[(mout['sig.comparison']==i)&(mout['meandiffabs']>args.mindiff_gsea)]['SYMBOL'].dropna()))
-        enr = gp.enrichr(gene_list=gene_list,
-                     gene_sets=gene_sets,
-                     organism='human',
-                     outdir=args.output+'/'+args.input.split('/')[-1]+'.gsea/'+i.replace('|','_'),
-                     cutoff = 1,
-                     format = 'jpg',
-                    )
+        
+        try:
+            enr = gp.enrichr(gene_list=gene_list,
+                         gene_sets=gene_sets,
+                         organism='human',
+                         outdir=args.output+'/'+args.input.split('/')[-1]+'.gsea/'+i.replace('|','_'),
+                         cutoff = 1,
+                         format = 'jpg',
+                        )
+        except:
+            print("GSEA error:",gene_list)
                     
         fig_path = args.output+'/'+args.input.split('/')[-1]+'.gsea/'+i.replace('|','_')+\
                     "/"+args.gmt.split('/')[-1]+".human.enrichr.reports.jpg"
