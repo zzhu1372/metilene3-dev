@@ -369,11 +369,18 @@ def report(args, start_time, end_time, unmout, finalCls, mout):
     final_html = final_html.replace('<div>Number of clusters: XXX</div><br>', 'Number of clusters: '+str(len(finalCls['Group'].unique()))+'</div><br>')
     cls_table_html = pd.read_table(args.output+'/'+args.input.split('/')[-1]+'.clusters').to_html(escape=False)
     final_html = final_html.replace('<div id="pandas_table_placeholder_cluster"></div>', cls_table_html)
-    final_html = final_html.replace('./clstree.png', args.output+'/'+args.input.split('/')[-1]+'.tree.jpg')
+    final_html = final_html.replace('./clstree.png', './'+args.input.split('/')[-1]+'.tree.jpg')
 
     final_html = final_html.replace('<div>Number of supervised DMRs: XXX</div><br>', 'Number of supervised DMRs: '+str(mout.shape[0])+'</div><br>')
 
     table = mout.groupby('sig.comparison').count()[['p']].sort_values('p', ascending=False)[:10]
+    table.columns = ['#DMRs']
+    def decodeSigCmp(x):
+        upmlist = {'1':[], '2':[], '3':[]}
+        for i in range(len(x.split('|'))):
+            upmlist[x[i]].append(str(i)+',')
+        return 'Unmet Groups: '.join(upmlist['1'])+'|'+'Met Groups: '.join(upmlist['3'])
+    table.index = [decodeSigCmp(i) for i in table.index]
     gseapopup = ''
     j = 0
     for i in table.index:
@@ -392,7 +399,7 @@ def report(args, start_time, end_time, unmout, finalCls, mout):
         except:
             print("GSEA error:",gene_list)
                     
-        fig_path = args.output+'/'+args.input.split('/')[-1]+'.gsea/'+i.replace('|','_')+\
+        fig_path = './'+args.input.split('/')[-1]+'.gsea/'+i.replace('|','_')+\
                     "/"+args.gmt.split('/')[-1]+".human.enrichr.reports.jpg"
                     
         gseapopup += "<div id=\"popupgsea"+str(j)+"\" class=\"popup\"><p>GSEA:</p><img src="+fig_path+" height=\"200\"><br><br><button onclick=\"hidePopup('popupgsea"+str(j)+"')\">Close</button></div>\n"
@@ -414,7 +421,7 @@ def report(args, start_time, end_time, unmout, finalCls, mout):
 # main
 ###################################################################################################
 def main():
-    start_time = time.localtime()
+    start_time = time.ctime()
     
     args = parser.parse_args()
     print(args)
@@ -436,7 +443,7 @@ def main():
         runMetilene(args, headerfile, 'sup')
         mout = processOutput(args, 'sup', anno='T')
 
-        end_time = time.localtime()
+        end_time = time.ctime()
         report(args, start_time, end_time, unmout, finalCls, mout)
     
     else:
