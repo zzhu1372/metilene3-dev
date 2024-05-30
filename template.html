@@ -26,9 +26,9 @@
     <h2>Metilene Report for XXX</h2>
 
     <h3>History</h3>
+    <div>Command: XXX</div><br>
     <div>Version: XXX</div><br>
     <div>Parameters: XXX</div><br>
-    <div>Command: XXX</div><br>
     <div>Start time: XXX</div><br>
     <div>End time: XXX</div><br><br>
 
@@ -39,10 +39,10 @@
     
 
     <button onclick="showPopup('popupCluster')">Click to show the Table of clusters</button>
-    <div id="popupCluster" class="popup"><p>Clusters of samples:</p><div id="pandas_table_placeholder_cluster"></div><br><button onclick="hidePopup('popupCluster')">Close</button></div><br><br>
+    <div id="popupCluster" class="popup"><button onclick="hidePopup('popupCluster')">Close</button><br><p>Clusters of samples:</p><div id="pandas_table_placeholder_cluster"></div><br></div><br><br>
 
     <button onclick="showPopup('popupTree')">Click to show the tree</button>
-    <div id="popupTree" class="popup"><p>Cluster tree:</p><img src="./clstree.png" height="300"><br><br><button onclick="hidePopup('popupTree')">Close</button></div><br><br>
+    <div id="popupTree" class="popup"><button onclick="hidePopup('popupTree')">Close</button><br><p>Cluster tree:</p><img src="./clstree.png" height="300"><br></div><br><br>
 
     
     <h3>Supervised</h3>
