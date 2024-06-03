@@ -308,10 +308,13 @@ def plotFTree(cls, reportPath, sids):
     plt.savefig(reportPath+'.tree.jpg')
     
     
-def plotClustermap(mout, cls, reportPath, sids):
+def plotClustermap(mout, cls, reportPath, sids, finalCls):
     import random
     import seaborn as sns
     import matplotlib.pyplot as plt
+    from sklearn.decomposition import PCA
+    import numpy as np
+    from matplotlib.patches import Patch
     
     k = len(cls[0])
     dmrcluster_m = []
@@ -322,7 +325,19 @@ def plotClustermap(mout, cls, reportPath, sids):
     dmrcluster_m.columns = sids
     dmrcluster_m = dmrcluster_m.T
     dmrcluster_m = dmrcluster_m.sort_values(list(range(len(cls[2]))))
-    dmrcluster_m[k] = 0
+    
+    dmrmean_m = [] # for pCA
+    mout['mean'].apply(lambda x:dmrmean_m.append(x.split('|')))
+    dmrmean_m = pd.DataFrame(dmrmean_m)
+    dmrmean_m = dmrmean_m.astype(float).T
+    dmrmean_m.index = sids
+    pca = PCA(n_components=2)
+    X = pd.DataFrame(pca.fit_transform(np.array(dmrmean_m)))
+    X.index = dmrmean_m.index
+
+    X['k'] = X[0]-X[0].min()
+    X['k'] = X['k']/X['k'].max()
+    dmrcluster_m[k] = dmrcluster_m.index.map(X['k'])
     
     def td2(a,b):
         d = 0.01*abs(a[-1]-b[-1])
@@ -366,14 +381,8 @@ def plotClustermap(mout, cls, reportPath, sids):
     dmrmean_m.columns = sids
     dmrmean_m = dmrmean_m[dmrcluster_m.index].T
     
-    clsD = dmrcluster_m[[]]
-    clsD['grp'] = 0
-    clsD = clsD['grp']
-    for i in range(len(cls[0])):
-        clsD += dmrcluster_m[i]*(10**i)
-    print(clsD.unique())
-        
-    random.seed(1)
+    clsD = finalCls['Group']
+    random.seed(0)
     clsCD = {}
     for i in clsD.unique():
         clsCD[i] = (random.randint(1,100)/100,random.randint(1,100)/100,random.randint(1,100)/100)
@@ -386,6 +395,17 @@ def plotClustermap(mout, cls, reportPath, sids):
         method='ward', metric='cityblock')
     plt.savefig(reportPath+'.heatmap.jpg')
     plt.savefig(reportPath+'.heatmap.pdf')
+
+    fig, ax0 = plt.subplots(figsize=(10, 10))
+    X['grp'] = X.index.map(clsD.to_dict()).map(clsCD)
+    print(X)
+    sns.scatterplot(x=X[0],y=X[1],c=X['grp'],ax=ax0,s=30)
+    
+    label_color_dict = clsCD.copy()
+    legend_handles = [Patch(color=color, label=label) for label, color in label_color_dict.items()]
+    ax0.legend(handles=legend_handles, ncol=1, )
+#    ax0.axis('off')
+    plt.savefig(reportPath+'.dmrpca.jpg')
 
 
 def clustering(mout, args):
@@ -411,8 +431,6 @@ def clustering(mout, args):
 
     reportPath = args.output+'/'+args.input.split('/')[-1]
     sids = list(pd.read_table(args.input, nrows=0).columns[2:])
-    plotFTree(cls, reportPath, sids)
-    plotClustermap(mout, cls, reportPath, sids)
     
     finalCls = pd.DataFrame([i.split('|') for i in cls[0]]).sum()
     finalCls.index = sids
@@ -426,6 +444,9 @@ def clustering(mout, args):
     finalCls.columns = ['Group']
     finalCls.index.name = 'ID'
     finalCls.to_csv(reportPath+'.clusters', sep='\t')
+    
+    plotFTree(cls, reportPath, sids)
+    plotClustermap(mout, cls, reportPath, sids, finalCls)
     
     return finalCls
 
@@ -452,6 +473,7 @@ def report(args, start_time, end_time, unmout, finalCls, mout):
     final_html = final_html.replace('<div id="pandas_table_placeholder_cluster"></div>', cls_table_html)
     final_html = final_html.replace('./clstree.png', './'+args.input.split('/')[-1]+'.tree.jpg')
     final_html = final_html.replace('./heatmap.png', './'+args.input.split('/')[-1]+'.heatmap.jpg')
+    final_html = final_html.replace('./dmrpca.png', './'+args.input.split('/')[-1]+'.dmrpca.jpg')
 
     final_html = final_html.replace('<div>Number of supervised DMRs: XXX</div><br>', 'Number of supervised DMRs: '+str(mout.shape[0])+'</div><br>')
 
