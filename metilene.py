@@ -535,6 +535,10 @@ def report(args, start_time, end_time, unmout, finalCls, mout):
 # main
 ###################################################################################################
 def main():
+    try:
+        os.mkdir(args.output)
+    except:
+        pass
     start_time = time.ctime()
     
     args = parser.parse_args()
