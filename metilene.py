@@ -306,6 +306,86 @@ def plotFTree(cls, reportPath, sids):
     f,a = plt.subplots(figsize=[20,len(sids)/5])
     Phylo.draw(tree, axes=a, do_show=False)
     plt.savefig(reportPath+'.tree.jpg')
+    
+    
+def plotClustermap(mout, cls, reportPath, sids):
+    import random
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+    
+    k = len(cls[0])
+    dmrcluster_m = []
+    pd.Series(cls[0]).apply(lambda x:dmrcluster_m.append(x.split('|')))
+    dmrcluster_m = pd.DataFrame(dmrcluster_m)
+    dmrcluster_m = dmrcluster_m.astype(float)
+    
+    dmrcluster_m.columns = sids
+    dmrcluster_m = dmrcluster_m.T
+    dmrcluster_m = dmrcluster_m.sort_values(list(range(len(cls[2]))))
+    dmrcluster_m[k] = 0
+    
+    def td2(a,b):
+        d = 0.01*abs(a[-1]-b[-1])
+        for i in range(len(a)-1):
+            if a[i]!=b[i]:
+                d += max(cls[1])+1 - cls[1][i]
+                break
+        return d
+    
+    cm = sns.clustermap(dmrcluster_m, metric=td2,\
+                        figsize=[3,3],row_cluster=True,col_cluster=False,\
+                         dendrogram_ratio=0.2, colors_ratio=0.15, xticklabels=False, yticklabels=False, \
+                        method='complete', cmap='Spectral_r')
+    lk = cm.dendrogram_row
+
+    dmrmean_m = []
+    
+    def editD(a, b):
+        a = a.split('|')
+        b = b.split('|')
+        num = 0
+        all = 0
+        for i in range(len(a)):
+            if a[i] != '0':
+                if a[i] != b[i]:
+                    num += 1
+                all += 1
+        if all == 0:
+            return 0
+        return num/all
+        
+    denovo_pn2 = mout[['mean','sig.comparison.bin']]
+    denovo_pn2['tmp'] = 0
+    for i in cls[0]:
+        denovo_pn2['tmp'] += 1*(denovo_pn2['sig.comparison.bin'].apply(lambda x:editD(i,x))==0)
+    denovo_filtered = denovo_pn2.loc[denovo_pn2['tmp']>0]
+    denovo_filtered['mean'].apply(lambda x:dmrmean_m.append(x.split('|')))
+    
+    dmrmean_m = pd.DataFrame(dmrmean_m)
+    dmrmean_m = dmrmean_m.astype(float)
+    dmrmean_m.columns = sids
+    dmrmean_m = dmrmean_m[dmrcluster_m.index].T
+    
+    clsD = dmrcluster_m[[]]
+    clsD['grp'] = 0
+    clsD = clsD['grp']
+    for i in range(len(cls[0])):
+        clsD += dmrcluster_m[i]*(10**i)
+    print(clsD.unique())
+        
+    random.seed(1)
+    clsCD = {}
+    for i in clsD.unique():
+        clsCD[i] = (random.randint(1,100)/100,random.randint(1,100)/100,random.randint(1,100)/100)
+    
+    cm = sns.clustermap(dmrmean_m,\
+        row_colors=[dmrmean_m.index.map(clsD.to_dict()).map(clsCD),\
+                    (dmrmean_m[0]=='NO').map({False:'white'})],\
+        row_linkage=lk.linkage,\
+       cmap='Spectral_r', figsize=[0.2*len(sids),0.2*len(sids)], dendrogram_ratio=0.25, xticklabels=False, yticklabels=True, \
+        method='ward', metric='cityblock')
+    plt.savefig(reportPath+'.heatmap.jpg')
+    plt.savefig(reportPath+'.heatmap.pdf')
 
 
 def clustering(mout, args):
@@ -332,6 +412,7 @@ def clustering(mout, args):
     reportPath = args.output+'/'+args.input.split('/')[-1]
     sids = list(pd.read_table(args.input, nrows=0).columns[2:])
     plotFTree(cls, reportPath, sids)
+    plotClustermap(mout, cls, reportPath, sids)
     
     finalCls = pd.DataFrame([i.split('|') for i in cls[0]]).sum()
     finalCls.index = sids
@@ -370,6 +451,7 @@ def report(args, start_time, end_time, unmout, finalCls, mout):
     cls_table_html = finalCls.to_html(escape=False)
     final_html = final_html.replace('<div id="pandas_table_placeholder_cluster"></div>', cls_table_html)
     final_html = final_html.replace('./clstree.png', './'+args.input.split('/')[-1]+'.tree.jpg')
+    final_html = final_html.replace('./heatmap.png', './'+args.input.split('/')[-1]+'.heatmap.jpg')
 
     final_html = final_html.replace('<div>Number of supervised DMRs: XXX</div><br>', 'Number of supervised DMRs: '+str(mout.shape[0])+'</div><br>')
 
