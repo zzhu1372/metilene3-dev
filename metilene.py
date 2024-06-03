@@ -535,16 +535,17 @@ def report(args, start_time, end_time, unmout, finalCls, mout):
 # main
 ###################################################################################################
 def main():
-    try:
-        os.mkdir(args.output)
-    except:
-        pass
     start_time = time.ctime()
     
     args = parser.parse_args()
     print(args)
+    
     getMetilene()
-
+    try:
+        os.mkdir(args.output)
+    except:
+        pass
+        
     if args.unsupervised=='T':
         headerfile = args.output+'/'+args.input.split('/')[-1]+'.unsup.header'
         preprocess(args, headerfile, 'unsup')
