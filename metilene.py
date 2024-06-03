@@ -391,8 +391,8 @@ def plotClustermap(mout, cls, reportPath, sids, finalCls):
         row_colors=[dmrmean_m.index.map(clsD.to_dict()).map(clsCD),\
                     (dmrmean_m[0]=='NO').map({False:'white'})],\
         row_linkage=lk.linkage,\
-       cmap='Spectral_r', figsize=[0.2*len(sids),0.2*len(sids)], dendrogram_ratio=0.25, xticklabels=False, yticklabels=True, \
-        method='ward', metric='cityblock')
+        cmap='Spectral_r', figsize=[0.2*len(sids),0.2*len(sids)], dendrogram_ratio=0.25, xticklabels=False, yticklabels=True, \
+        method='ward')
     plt.savefig(reportPath+'.heatmap.jpg')
     plt.savefig(reportPath+'.heatmap.pdf')
 
