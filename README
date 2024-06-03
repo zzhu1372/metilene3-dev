@@ -4,9 +4,9 @@ README file for metilene
 INSTALL
 ==============
 1. Get Python3 packages
-pip install pandas matplotlib biopython gseapy
+pip install pandas matplotlib biopython gseapy seaborn numpy scikit-learn
 or
-pip3 install pandas matplotlib biopython gseapy
+pip3 install pandas matplotlib biopython gseapy seaborn numpy scikit-learn
 
 2. Get R packages
 Run the following in R:
