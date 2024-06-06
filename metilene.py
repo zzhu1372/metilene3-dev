@@ -218,7 +218,7 @@ def processOutput(args, ifsup, anno='F'):
 ###################################################################################################
 # DMR-Freq-based Clustering
 ###################################################################################################
-def recurSplit(arr, ref=0, depth=0, nsep=0, minN=2, minNDMR=100):
+def recurSplit(arr, ref=0, depth=0, nsep=0, minN=2, minNDMR=100, fulltree=False):
     finalList = []
     depthList = []
     weightList = []
@@ -257,7 +257,23 @@ def recurSplit(arr, ref=0, depth=0, nsep=0, minN=2, minNDMR=100):
             nsep = arr[i]
             weightList.append(nsep)
             break
-            
+        # print(newref,fulltree)
+        if newref==0 and fulltree:
+            # print('FT')
+            for i in arr.index:
+                newref = 0
+                if arr[i] < minNDMR:
+                    return ([],[],[])
+                if numVS(i)==0:
+                    continue
+                newref = i
+                finalList.append(newref)
+                depthList.append(depth)
+                nsep = arr[i]
+                weightList.append(nsep)
+                break
+            # print(newref)
+
     if newref == 0:
         return (finalList, depthList, weightList)
         
@@ -273,7 +289,7 @@ def recurSplit(arr, ref=0, depth=0, nsep=0, minN=2, minNDMR=100):
         for i in ['1','2','3']:
             masked[i] = arr.copy()
             masked[i].index = pd.Series(arr.index).apply(lambda x:mask(x, newref, i))
-            resRS = recurSplit(masked[i], mask(newref, newref, i), depth+1, nsep, minN, minNDMR)
+            resRS = recurSplit(masked[i], mask(newref, newref, i), depth+1, nsep, minN, minNDMR, fulltree)
             finalList += resRS[0]
             depthList += resRS[1]
             weightList+= resRS[2]
@@ -281,7 +297,7 @@ def recurSplit(arr, ref=0, depth=0, nsep=0, minN=2, minNDMR=100):
         return (finalList, depthList, weightList)
 
     
-def plotFTree(cls, reportPath, sids):
+def plotFTree(cls, reportPath, sids, cmap):
     k = len(cls[0])
     dmrcluster_m = []
     pd.Series(cls[0]).apply(lambda x:dmrcluster_m.append(x.split('|')))
@@ -318,7 +334,7 @@ def plotFTree(cls, reportPath, sids):
     tree = Phylo.read(reportPath+".nwk", "newick")
 
     f,a = plt.subplots(figsize=[20,len(sids)/5])
-    Phylo.draw(tree, axes=a, do_show=False)
+    Phylo.draw(tree, axes=a, do_show=False, label_colors=cmap)
     plt.savefig(reportPath+'.tree.jpg')
     
     
@@ -361,14 +377,14 @@ def plotClustermap(mout, cls, reportPath, sids, finalCls):
                 break
         return d
     
-    print(dmrcluster_m )
+    # print(dmrcluster_m )
     cm = sns.clustermap(dmrcluster_m, metric=td2,\
                         figsize=[3,3],row_cluster=True,col_cluster=False,\
                          dendrogram_ratio=0.2, colors_ratio=0.15, xticklabels=False, yticklabels=False, \
                         method='complete', cmap='Spectral_r')
     lk = cm.dendrogram_row
-    print(lk)
-    print(cls)
+    # print(lk)
+    # print(cls)
     dmrmean_m = []
     
     def editD(a, b):
@@ -391,7 +407,7 @@ def plotClustermap(mout, cls, reportPath, sids, finalCls):
         denovo_pn2['tmp'] += 1*(denovo_pn2['sig.comparison.bin'].apply(lambda x:editD(i,x))==0)
     denovo_filtered = denovo_pn2.loc[denovo_pn2['tmp']>0]
     denovo_filtered['mean'].apply(lambda x:dmrmean_m.append(x.split('|')))
-    print(denovo_filtered)
+    # print(denovo_filtered)
     
     dmrmean_m = pd.DataFrame(dmrmean_m)
     dmrmean_m = dmrmean_m.astype(float)
@@ -403,28 +419,31 @@ def plotClustermap(mout, cls, reportPath, sids, finalCls):
     clsCD = {}
     for i in clsD.unique():
         clsCD[i] = (random.randint(1,100)/100,random.randint(1,100)/100,random.randint(1,100)/100)
-    
+    cmap = {}
+    for i in dmrmean_m.index:
+        cmap[i] = clsCD[clsD.to_dict()[i]]
+
     if dmrmean_m.shape[1]>1:
         cm = sns.clustermap(dmrmean_m,\
-            row_colors=[dmrmean_m.index.map(clsD.to_dict()).map(clsCD),\
+            row_colors=[dmrmean_m.index.map(cmap),\
                         (dmrmean_m[0]=='NO').map({False:'white'})],\
             row_linkage=lk.linkage,\
-            cmap='Spectral_r', figsize=[0.2*len(sids),0.2*len(sids)], dendrogram_ratio=0.25, xticklabels=False, yticklabels=True, \
+            cmap='Spectral_r', figsize=[0.2*len(sids)+0.1*max([len(i) for i in sids]),0.2*len(sids)], dendrogram_ratio=0.25, xticklabels=False, yticklabels=True, \
             method='ward')
         plt.savefig(reportPath+'.heatmap.jpg')
         plt.savefig(reportPath+'.heatmap.pdf')
     else:
         cm = sns.clustermap(dmrmean_m,\
-            row_colors=[dmrmean_m.index.map(clsD.to_dict()).map(clsCD),\
+            row_colors=[dmrmean_m.index.map(cmap),\
                         (dmrmean_m[0]=='NO').map({False:'white'})],\
             row_linkage=lk.linkage,col_cluster=False,\
-            cmap='Spectral_r', figsize=[0.2*len(sids),0.2*len(sids)], dendrogram_ratio=0.25, xticklabels=False, yticklabels=True, \
+            cmap='Spectral_r', figsize=[0.2*len(sids)+0.1*max([len(i) for i in sids]),0.2*len(sids)], dendrogram_ratio=0.25, xticklabels=False, yticklabels=True, \
             method='ward')
         plt.savefig(reportPath+'.heatmap.jpg')
         plt.savefig(reportPath+'.heatmap.pdf')
 
     fig, ax0 = plt.subplots(figsize=(10, 10))
-    X['grp'] = X.index.map(clsD.to_dict()).map(clsCD)
+    X['grp'] = X.index.map(cmap)
     # print(X)
     sns.scatterplot(x=X[0],y=X[1],c=X['grp'],ax=ax0,s=30)
     
@@ -433,6 +452,8 @@ def plotClustermap(mout, cls, reportPath, sids, finalCls):
     ax0.legend(handles=legend_handles, ncol=1, )
 #    ax0.axis('off')
     plt.savefig(reportPath+'.dmrpca.jpg')
+
+    return cmap
 
 
 def clustering(mout, args):
@@ -474,9 +495,11 @@ def clustering(mout, args):
     finalCls.index.name = 'ID'
     finalCls.to_csv(reportPath+'.clusters', sep='\t')
     
+    cmap = plotClustermap(mout, cls, reportPath, sids, finalCls)
     if args.plotTree=='T':
-        plotFTree(cls, reportPath, sids)
-    plotClustermap(mout, cls, reportPath, sids, finalCls)
+        cls_full = recurSplit(ranked.sort_values(ascending = False), \
+                              minN=minN, minNDMR=0, fulltree=True)
+        plotFTree(cls_full, reportPath, sids, cmap)
     
     return finalCls
 
