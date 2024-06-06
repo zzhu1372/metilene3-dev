@@ -3,6 +3,8 @@ import sys
 import time
 import argparse
 import pandas as pd
+import warnings
+warnings.filterwarnings('ignore')
 
 metilene_ver = 2.0
 
@@ -19,6 +21,8 @@ parser.add_argument('-om', "--outputImputed",)
 parser.add_argument('-u', "--unsupervised",)
 parser.add_argument('-gr', "--groupinfo",)
 parser.add_argument('-re', "--rerun",)
+parser.add_argument('-plt', "--plotTree", default='F')
+parser.add_argument('-anno', "--anno",)
 parser.add_argument('-gmt', "--gmt",)
 
 parser.add_argument('-m', "--mincpgs", type=int, default=10)
@@ -49,7 +53,7 @@ def preprocess(args, headerfile, ifsup, grpinfo=None):
     if ifsup=='unsup':
         cols = pd.read_table(args.input, nrows=0)
         newcols = list(cols.columns)
-        print(newcols)
+        # print(newcols)
         for i in range(len(newcols))[2:]:
             newcols[i] = str(i-2)+'_Sample'+str(i-2)
         cols.columns = newcols
@@ -71,7 +75,7 @@ def preprocess(args, headerfile, ifsup, grpinfo=None):
         grpdict = grp.map(grpid).to_dict()
         cols = pd.read_table(args.input, nrows=0)
         newcols = list(cols.columns)
-        print(newcols)
+        # print(newcols)
         for i in range(len(newcols))[2:]:
             newcols[i] = str(grpdict[newcols[i]])+'_Sample'+str(i-2)#+'_'+newcols[i]
         cols.columns = newcols
@@ -81,7 +85,7 @@ def preprocess(args, headerfile, ifsup, grpinfo=None):
 def runMetilene(args, headerfile, ifsup):
     if args.skipMetilene=='T':
         return None
-    print(os.path.realpath(__file__))
+    # print(os.path.realpath(__file__))
     if ifsup=='unsup':
         os.system(os.path.realpath(__file__)[:-3]+" \
                     -t "+str(args.threads)+\
@@ -91,7 +95,7 @@ def runMetilene(args, headerfile, ifsup):
                     " -e "+str(args.mismatch)+\
                     " -q "+str(args.mindiff_unsup)+\
                     " -H "+headerfile+\
-                    " -d 0 -s 1 -l 1 -p 1 "+\
+                    " -d 0 -s 1 -l 1 -p 0 "+\
                     args.input +" > "+\
                     args.output+'/'+args.input.split('/')[-1]+'.unsup.mout' )
 
@@ -104,7 +108,7 @@ def runMetilene(args, headerfile, ifsup):
                     " -e "+str(args.mismatch)+\
                     " -q "+str(args.mindiff)+\
                     " -H "+headerfile+\
-                    " -d 0 -s 1 -l 1 -p 1 -O "+str(1*(args.outputImputed=='T'))+' '+\
+                    " -d 0 -s 1 -l 1 -p 0 -O "+str(1*(args.outputImputed=='T'))+' '+\
                     args.input +" > "+\
                     args.output+'/'+args.input.split('/')[-1]+'.aout' )
                     
@@ -127,10 +131,14 @@ def runMetilene(args, headerfile, ifsup):
             args.output+'/'+args.input.split('/')[-1]+'.mout')
 
 
-def chipseeker(mout, moutPath):
-    cmd = "require(TxDb.Hsapiens.UCSC.hg19.knownGene);require(ChIPseeker);"+\
+def chipseeker(mout, moutPath, anno):
+    if anno in ['hg19','HG19']:
+        anno = 'TxDb.Hsapiens.UCSC.hg19.knownGene'
+    if anno in ['hg38','HG38']:
+        anno = 'TxDb.Hsapiens.UCSC.hg38.knownGene'
+    cmd = "require("+anno+");require(ChIPseeker);"+\
     "peakfile=\'"+str(os.getcwd())+"/"+moutPath+".bed\';"+\
-    "txdb<-TxDb.Hsapiens.UCSC.hg19.knownGene;"+\
+    "txdb<-"+anno+";"+\
     "peakAnno <- annotatePeak(peakfile, tssRegion=c(-3000, 1000), TxDb=txdb, annoDb=\'org.Hs.eg.db\');"+\
     "write.csv(as.GRanges(peakAnno), \'"+str(os.getcwd())+"/"+moutPath+".bed.csv\')"
     
@@ -191,10 +199,10 @@ def processOutput(args, ifsup, anno='F'):
     mout['meanU'] = mout.apply(lambda x:calmean(x['mean'],x['sig.comparison'],'1'), axis=1)
     mout['meanP'] = mout.apply(lambda x:calmean(x['mean'],x['sig.comparison'],'2'), axis=1)
     mout['meanM'] = mout.apply(lambda x:calmean(x['mean'],x['sig.comparison'],'3'), axis=1)
-    print(mout.shape)
+    # print('# of processed DMRs:',mout.shape[0])
     
-    if anno == 'T':
-        mout = chipseeker(mout, moutPath)
+    if anno == 'T' and args.anno:
+        mout = chipseeker(mout, moutPath, args.anno)
         
     if ifsup=='unsup':
         mout.to_csv(args.output + '/' + args.input.split('/')[-1] + '.unsup.post.mout', \
@@ -220,15 +228,21 @@ def recurSplit(arr, ref=0, depth=0, nsep=0, minN=2, minNDMR=100):
     
     if ref == 0:
         arr = arr.groupby('sig.comparison.bin').sum().sort_values(ascending=False)
+        ifSig = 0
         for i in range(len(arr)):
-            newref = arr.index[i]
-            nsep = arr.iloc[i]
+            newref = arr.index[0]
+            nsep = arr.iloc[0]
             if nsep > minNDMR and numVS(newref) >= minN:#0.5*nonsep:
+                newref = arr.index[i]
+                nsep = arr.iloc[i]
+                ifSig = 1
                 break
-        finalList.append(newref)
-        depthList.append(depth)
-        weightList.append(nsep)
-        
+        if ifSig:
+            finalList.append(newref)
+            depthList.append(depth)
+            weightList.append(nsep)
+        else:
+            return None
     else:
         arr = arr.groupby('sig.comparison.bin').sum().sort_values(ascending=False)
         for i in arr.index:
@@ -347,12 +361,14 @@ def plotClustermap(mout, cls, reportPath, sids, finalCls):
                 break
         return d
     
+    print(dmrcluster_m )
     cm = sns.clustermap(dmrcluster_m, metric=td2,\
                         figsize=[3,3],row_cluster=True,col_cluster=False,\
                          dendrogram_ratio=0.2, colors_ratio=0.15, xticklabels=False, yticklabels=False, \
                         method='complete', cmap='Spectral_r')
     lk = cm.dendrogram_row
-
+    print(lk)
+    print(cls)
     dmrmean_m = []
     
     def editD(a, b):
@@ -375,6 +391,7 @@ def plotClustermap(mout, cls, reportPath, sids, finalCls):
         denovo_pn2['tmp'] += 1*(denovo_pn2['sig.comparison.bin'].apply(lambda x:editD(i,x))==0)
     denovo_filtered = denovo_pn2.loc[denovo_pn2['tmp']>0]
     denovo_filtered['mean'].apply(lambda x:dmrmean_m.append(x.split('|')))
+    print(denovo_filtered)
     
     dmrmean_m = pd.DataFrame(dmrmean_m)
     dmrmean_m = dmrmean_m.astype(float)
@@ -387,18 +404,28 @@ def plotClustermap(mout, cls, reportPath, sids, finalCls):
     for i in clsD.unique():
         clsCD[i] = (random.randint(1,100)/100,random.randint(1,100)/100,random.randint(1,100)/100)
     
-    cm = sns.clustermap(dmrmean_m,\
-        row_colors=[dmrmean_m.index.map(clsD.to_dict()).map(clsCD),\
-                    (dmrmean_m[0]=='NO').map({False:'white'})],\
-        row_linkage=lk.linkage,\
-        cmap='Spectral_r', figsize=[0.2*len(sids),0.2*len(sids)], dendrogram_ratio=0.25, xticklabels=False, yticklabels=True, \
-        method='ward')
-    plt.savefig(reportPath+'.heatmap.jpg')
-    plt.savefig(reportPath+'.heatmap.pdf')
+    if dmrmean_m.shape[1]>1:
+        cm = sns.clustermap(dmrmean_m,\
+            row_colors=[dmrmean_m.index.map(clsD.to_dict()).map(clsCD),\
+                        (dmrmean_m[0]=='NO').map({False:'white'})],\
+            row_linkage=lk.linkage,\
+            cmap='Spectral_r', figsize=[0.2*len(sids),0.2*len(sids)], dendrogram_ratio=0.25, xticklabels=False, yticklabels=True, \
+            method='ward')
+        plt.savefig(reportPath+'.heatmap.jpg')
+        plt.savefig(reportPath+'.heatmap.pdf')
+    else:
+        cm = sns.clustermap(dmrmean_m,\
+            row_colors=[dmrmean_m.index.map(clsD.to_dict()).map(clsCD),\
+                        (dmrmean_m[0]=='NO').map({False:'white'})],\
+            row_linkage=lk.linkage,col_cluster=False,\
+            cmap='Spectral_r', figsize=[0.2*len(sids),0.2*len(sids)], dendrogram_ratio=0.25, xticklabels=False, yticklabels=True, \
+            method='ward')
+        plt.savefig(reportPath+'.heatmap.jpg')
+        plt.savefig(reportPath+'.heatmap.pdf')
 
     fig, ax0 = plt.subplots(figsize=(10, 10))
     X['grp'] = X.index.map(clsD.to_dict()).map(clsCD)
-    print(X)
+    # print(X)
     sns.scatterplot(x=X[0],y=X[1],c=X['grp'],ax=ax0,s=30)
     
     label_color_dict = clsCD.copy()
@@ -427,7 +454,9 @@ def clustering(mout, args):
     ranked = mout[['sig.comparison.bin','meandiffabs']].groupby('sig.comparison.bin').\
         sum()['meandiffabs'].sort_values(ascending=False)
     cls = recurSplit(ranked.sort_values(ascending = False), minN=minN, minNDMR=minNDMR)
-    print(cls)
+    # print(cls)
+    if cls is None:
+        return None
 
     reportPath = args.output+'/'+args.input.split('/')[-1]
     sids = list(pd.read_table(args.input, nrows=0).columns[2:])
@@ -445,7 +474,8 @@ def clustering(mout, args):
     finalCls.index.name = 'ID'
     finalCls.to_csv(reportPath+'.clusters', sep='\t')
     
-    plotFTree(cls, reportPath, sids)
+    if args.plotTree=='T':
+        plotFTree(cls, reportPath, sids)
     plotClustermap(mout, cls, reportPath, sids, finalCls)
     
     return finalCls
@@ -471,7 +501,12 @@ def report(args, start_time, end_time, unmout, finalCls, mout):
     final_html = final_html.replace('<div>Number of clusters: XXX</div><br>', 'Number of clusters: '+str(len(finalCls['Group'].unique()))+'</div><br>')
     cls_table_html = finalCls.to_html(escape=False)
     final_html = final_html.replace('<div id="pandas_table_placeholder_cluster"></div>', cls_table_html)
-    final_html = final_html.replace('./clstree.png', './'+args.input.split('/')[-1]+'.tree.jpg')
+
+    if args.plotTree=='T':
+        final_html = final_html.replace('./clstree.png', './'+args.input.split('/')[-1]+'.tree.jpg')
+    else:
+        final_html = final_html.replace('./clstree.png', '')
+        
     final_html = final_html.replace('./heatmap.png', './'+args.input.split('/')[-1]+'.heatmap.jpg')
     final_html = final_html.replace('./dmrpca.png', './'+args.input.split('/')[-1]+'.dmrpca.jpg')
 
@@ -491,34 +526,35 @@ def report(args, start_time, end_time, unmout, finalCls, mout):
         return 'Unmet:'+','.join(upmlist['1'])+' - vs - '+'Met:'+','.join(upmlist['3'])
     
     gseapopup = ''
-    j = 0
-    for i in table.index:
+    if args.gmt and args.anno:
         import gseapy as gp
-        gene_sets = args.gmt
-        gene_list = list(set(mout.loc[(mout['sig.comparison']==i)&(mout['meandiffabs']>args.mindiff_gsea)]['SYMBOL'].dropna()))
-        
-        try:
-            enr = gp.enrichr(gene_list=gene_list,
-                         gene_sets=gene_sets,
-                         organism='human',
-                         outdir=args.output+'/'+args.input.split('/')[-1]+'.gsea/'+i.replace('|','_'),
-                         cutoff = 1,
-                         format = 'jpg',
-                        )
-        except:
-            print("GSEA error:",gene_list)
-                    
-        fig_path = './'+args.input.split('/')[-1]+'.gsea/'+i.replace('|','_')+\
-                    "/"+args.gmt.split('/')[-1]+".human.enrichr.reports.jpg"
-                    
-        gseapopup += "<div id=\"popupgsea"+str(j)+"\" class=\"popup\"><br>\
-            <button onclick=\"hidePopup('popupgsea"+str(j)+"')\">Close</button>\
-                <p>GSEA for "+decodeSigCmp(i)+"</p><img src="+fig_path+" height=\"200\"><br></div>\n"
-        j+=1
-        
-    table['GSEA'] = ["<button onclick=\"showPopup('popupgsea"+str(i)+\
-                     "')\">Click to show GSEA results</button>" \
-                    for i in range(table.shape[0])]
+        j = 0
+        for i in table.index:
+            gene_sets = args.gmt
+            gene_list = list(set(mout.loc[(mout['sig.comparison']==i)&(mout['meandiffabs']>args.mindiff_gsea)]['SYMBOL'].dropna()))
+            
+            try:
+                enr = gp.enrichr(gene_list=gene_list,
+                            gene_sets=gene_sets,
+                            organism='human',
+                            outdir=args.output+'/'+args.input.split('/')[-1]+'.gsea/'+i.replace('|','_'),
+                            cutoff = 1,
+                            format = 'jpg',
+                            )
+            except:
+                print("GSEA error:",gene_list)
+                        
+            fig_path = './'+args.input.split('/')[-1]+'.gsea/'+i.replace('|','_')+\
+                        "/"+args.gmt.split('/')[-1]+".human.enrichr.reports.jpg"
+                        
+            gseapopup += "<div id=\"popupgsea"+str(j)+"\" class=\"popup\"><br>\
+                <button onclick=\"hidePopup('popupgsea"+str(j)+"')\">Close</button>\
+                    <p>GSEA for "+decodeSigCmp(i)+"</p><img src="+fig_path+" height=\"200\"><br></div>\n"
+            j+=1
+            
+        table['GSEA'] = ["<button onclick=\"showPopup('popupgsea"+str(i)+\
+                        "')\">Click to show GSEA results</button>" \
+                        for i in range(table.shape[0])]
     
     table.index = [decodeSigCmp(i) for i in table.index]
 
@@ -552,6 +588,9 @@ def main():
         runMetilene(args, headerfile, 'unsup')
         unmout = processOutput(args, 'unsup')
         finalCls = clustering(unmout, args)
+        if finalCls is None:
+            print('ERROR: No cluster found. Please check the data or use smaller meandiff for clustering.')
+            return None
 
         if args.rerun=='F':
             return None
