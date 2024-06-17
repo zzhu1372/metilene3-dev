@@ -6,35 +6,42 @@ import pandas as pd
 import warnings
 warnings.filterwarnings('ignore')
 
-metilene_ver = 2.0
+metilene_ver = 3.0
 
 ###################################################################################################
 # Input
 ###################################################################################################
 parser = argparse.ArgumentParser(description='.')
-parser.add_argument('-i', "--input",)
+# IO
+parser.add_argument('-i', "--input", help='the input methylation data',)
+parser.add_argument('-g', "--groupinfo",)
 parser.add_argument('-o', "--output",)
-parser.add_argument('-t', "--threads",)
-
-parser.add_argument('-s', "--skipMetilene",)
-parser.add_argument('-om', "--outputImputed",)
-parser.add_argument('-u', "--unsupervised",)
-parser.add_argument('-gr', "--groupinfo",)
-parser.add_argument('-re', "--rerun",)
-parser.add_argument('-plt', "--plotTree", default='F')
-parser.add_argument('-anno', "--anno",)
-parser.add_argument('-gmt', "--gmt",)
-
-parser.add_argument('-m', "--mincpgs", type=int, default=10)
+# system
+parser.add_argument('-t', "--threads", type=int, default=1)
+parser.add_argument('-s', "--seed", type=int, default=1)
+parser.add_argument('-O', "--outputImputed", type=lambda x: (str(x).lower() == 'true'), default=False)
+parser.add_argument('-p', "--verbose", type=lambda x: (str(x).lower() == 'true'), default=False)
+# DMR
+parser.add_argument('-M', "--maxdist", type=int, default=300)
+parser.add_argument('-m', "--minCpGs", type=int, default=10)
+parser.add_argument('-d', "--minMethDiff", type=float, default=0.1)
 parser.add_argument('-r', "--minDMR", type=int, default=5)
-parser.add_argument('-w', "--mindiff", type=float, default=0.1)
-parser.add_argument('-wd', "--mindiff_unsup", type=float, default=0.5)
-parser.add_argument('-wg', "--mindiff_gsea", type=float, default=0.5)
-parser.add_argument('-e', "--mismatch", type=float, default=0.5)
+parser.add_argument('-v', "--valley", type=float, default=0.7)
+parser.add_argument('-D', "--minMethDiffHigh", type=float, default=0.5)
+parser.add_argument('-u', "--clusteringRatio", type=float, default=0.5)
+# DMTree
+parser.add_argument('-n', "--minNSamples", type=int, default=3)
+parser.add_argument('-w', "--minSumDMRs", type=int, default=100)
+# optional
+parser.add_argument('-plot', "--visualization", type=lambda x: (str(x).lower() == 'true'), default=False)
+parser.add_argument('-anno', "--annotation",)
+parser.add_argument('-gsea', "--genesets",)
 
-parser.add_argument('-n', "--minN0", type=int, default=1)
-parser.add_argument('-g', "--minN", type=int, default=1)
-parser.add_argument('-d', "--minNDMR", type=int, default=1)
+# hidden
+parser.add_argument('-sk', "--skipMetilene", type=lambda x: (str(x).lower() == 'true'), default=False, help=argparse.SUPPRESS)
+parser.add_argument('-re', "--rerun", type=lambda x: (str(x).lower() == 'true'), default=True, help=argparse.SUPPRESS)
+parser.add_argument('-kt', "--keeptmp", type=lambda x: (str(x).lower() == 'true'), default=False, help=argparse.SUPPRESS)
+parser.add_argument('-n0', "--minN0", type=int, default=2, help=argparse.SUPPRESS)
 
 
 
@@ -70,7 +77,7 @@ def preprocess(args, headerfile, ifsup, grpinfo=None):
         df_grpid = pd.DataFrame(pd.Series(grpid))
         df_grpid.columns = ['Group_ID']
         df_grpid.index.name = 'Group'
-        df_grpid.to_csv(args.output+'/'+args.input.split('/')[-1]+'.groupID', sep='\t')
+        df_grpid.to_csv(args.output+'/group-ID.tsv', sep='\t')
         
         grpdict = grp.map(grpid).to_dict()
         cols = pd.read_table(args.input, nrows=0)
@@ -83,39 +90,54 @@ def preprocess(args, headerfile, ifsup, grpinfo=None):
 
 
 def runMetilene(args, headerfile, ifsup):
-    if args.skipMetilene=='T':
+    if args.skipMetilene:
         return None
     # print(os.path.realpath(__file__))
     if ifsup=='unsup':
-        os.system(os.path.realpath(__file__)[:-3]+" \
-                    -t "+str(args.threads)+\
-                    " -m "+str(args.mincpgs)+\
+        os.system(os.path.realpath(__file__)[:-3]+\
+                    " -t "+str(args.threads)+\
+                    " -s "+str(args.seed)+\
+                    " -p "+str(args.verbose*1)+\
+                    
+                    " -M "+str(args.maxdist)+\
+                    " -m "+str(args.minCpGs)+\
+                    " -d "+str(args.minMethDiffHigh)+\
+                    " -v "+str(args.valley)+\
+                    
                     " -r "+str(args.minDMR)+\
-                    " -w "+str(args.mindiff_unsup)+\
-                    " -e "+str(args.mismatch)+\
-                    " -q "+str(args.mindiff_unsup)+\
+                    " -w "+str(args.minMethDiffHigh)+\
+                    " -e "+str(args.clusteringRatio)+\
+                    " -q "+str(args.minMethDiffHigh)+\
+                    
                     " -H "+headerfile+\
-                    " -d 0 -s 1 -l 1 -p 0 "+\
-                    args.input +" > "+\
-                    args.output+'/'+args.input.split('/')[-1]+'.unsup.mout' )
+                    " -l 1 "+args.input+" > "+\
+                    args.output+'/DMRs-unsupervised.tsv' )
 
     else:
-        os.system(os.path.realpath(__file__)[:-3]+" \
-                    -t "+str(args.threads)+\
-                    " -m "+str(args.mincpgs)+\
+        os.system(os.path.realpath(__file__)[:-3]+\
+                    " -t "+str(args.threads)+\
+                    " -s "+str(args.seed)+\
+                    " -p "+str(args.verbose*1)+\
+                    " -O "+str(args.outputImputed*1)+\
+                    
+                    " -M "+str(args.maxdist)+\
+                    " -m "+str(args.minCpGs)+\
+                    " -d "+str(args.minMethDiffHigh)+\
+                    " -v "+str(args.valley)+\
+                    
                     " -r "+str(args.minDMR)+\
-                    " -w "+str(args.mindiff)+\
-                    " -e "+str(args.mismatch)+\
-                    " -q "+str(args.mindiff)+\
+                    " -w "+str(args.minMethDiffHigh)+\
+                    " -e "+str(args.clusteringRatio)+\
+                    " -q "+str(args.minMethDiffHigh)+\
+                    
                     " -H "+headerfile+\
-                    " -d 0 -s 1 -l 1 -p 0 -O "+str(1*(args.outputImputed=='T'))+' '+\
-                    args.input +" > "+\
+                    " -l 1 "+args.input+" > "+\
                     args.output+'/'+args.input.split('/')[-1]+'.aout' )
                     
-        if args.outputImputed=='T':
+        if args.outputImputed:
             os.system("grep -v \'//Imputed:\' "+\
             args.output+'/'+args.input.split('/')[-1]+'.aout >' + \
-            args.output+'/'+args.input.split('/')[-1]+'.mout')
+            args.output+'/DMRs.tsv')
             
             os.system("head -n1 "+args.input+" > "+\
                         args.output+'/'+args.input.split('/')[-1]+'.imputed')
@@ -128,7 +150,7 @@ def runMetilene(args, headerfile, ifsup):
             
         else:
             os.system("mv "+ args.output+'/'+args.input.split('/')[-1]+'.aout ' + \
-            args.output+'/'+args.input.split('/')[-1]+'.mout')
+            args.output+'/DMRs.tsv')
 
 
 def chipseeker(mout, moutPath, anno):
@@ -163,9 +185,9 @@ def chipseeker(mout, moutPath, anno):
 
 def processOutput(args, ifsup, anno='F'):
     if ifsup=='unsup':
-        moutPath = args.output + '/' + args.input.split('/')[-1] + '.unsup.mout'
+        moutPath = args.output + '/DMRs-unsupervised.tsv'
     else:
-        moutPath = args.output + '/' + args.input.split('/')[-1] + '.mout'
+        moutPath = args.output + '/DMRs.tsv'
     mout = pd.read_table(moutPath)
     mout['meandiffabs'] = mout['meandiff'].apply(abs)
 
@@ -201,14 +223,14 @@ def processOutput(args, ifsup, anno='F'):
     mout['meanM'] = mout.apply(lambda x:calmean(x['mean'],x['sig.comparison'],'3'), axis=1)
     # print('# of processed DMRs:',mout.shape[0])
     
-    if anno == 'T' and args.anno:
-        mout = chipseeker(mout, moutPath, args.anno)
+    if anno == 'T' and args.annotation:
+        mout = chipseeker(mout, moutPath, args.annotation)
         
     if ifsup=='unsup':
-        mout.to_csv(args.output + '/' + args.input.split('/')[-1] + '.unsup.post.mout', \
+        mout.to_csv(args.output + '/DMRs-unsupervised.tsv', \
                     index=False, sep='\t')
     else:
-        mout.to_csv(args.output + '/' + args.input.split('/')[-1] + '.post.mout', \
+        mout.to_csv(args.output + '/DMRs.tsv', \
                     index=False, sep='\t')
                     
     return mout
@@ -218,7 +240,7 @@ def processOutput(args, ifsup, anno='F'):
 ###################################################################################################
 # DMR-Freq-based Clustering
 ###################################################################################################
-def recurSplit(arr, ref=0, depth=0, nsep=0, minN=2, minNDMR=100, fulltree=False):
+def recurSplit(arr, ref=0, depth=0, nsep=0, minN=2, minSumDMRs=100, fulltree=False):
     finalList = []
     depthList = []
     weightList = []
@@ -232,7 +254,7 @@ def recurSplit(arr, ref=0, depth=0, nsep=0, minN=2, minNDMR=100, fulltree=False)
         for i in range(len(arr)):
             newref = arr.index[0]
             nsep = arr.iloc[0]
-            if nsep > minNDMR and numVS(newref) >= minN:#0.5*nonsep:
+            if nsep > minSumDMRs and numVS(newref) >= minN:#0.5*nonsep:
                 newref = arr.index[i]
                 nsep = arr.iloc[i]
                 ifSig = 1
@@ -247,7 +269,7 @@ def recurSplit(arr, ref=0, depth=0, nsep=0, minN=2, minNDMR=100, fulltree=False)
         arr = arr.groupby('sig.comparison.bin').sum().sort_values(ascending=False)
         for i in arr.index:
             newref = 0
-            if arr[i] < minNDMR:
+            if arr[i] < minSumDMRs:
                 return ([],[],[])
             if numVS(i)<minN:
                 continue
@@ -262,7 +284,7 @@ def recurSplit(arr, ref=0, depth=0, nsep=0, minN=2, minNDMR=100, fulltree=False)
             # print('FT')
             for i in arr.index:
                 newref = 0
-                if arr[i] < minNDMR:
+                if arr[i] < minSumDMRs:
                     return ([],[],[])
                 if numVS(i)==0:
                     continue
@@ -289,7 +311,7 @@ def recurSplit(arr, ref=0, depth=0, nsep=0, minN=2, minNDMR=100, fulltree=False)
         for i in ['1','2','3']:
             masked[i] = arr.copy()
             masked[i].index = pd.Series(arr.index).apply(lambda x:mask(x, newref, i))
-            resRS = recurSplit(masked[i], mask(newref, newref, i), depth+1, nsep, minN, minNDMR, fulltree)
+            resRS = recurSplit(masked[i], mask(newref, newref, i), depth+1, nsep, minN, minSumDMRs, fulltree)
             finalList += resRS[0]
             depthList += resRS[1]
             weightList+= resRS[2]
@@ -297,7 +319,7 @@ def recurSplit(arr, ref=0, depth=0, nsep=0, minN=2, minNDMR=100, fulltree=False)
         return (finalList, depthList, weightList)
 
     
-def plotFTree(cls, reportPath, sids, cmap):
+def plotDMTree(cls, reportPath, sids, cmap):
     k = len(cls[0])
     dmrcluster_m = []
     pd.Series(cls[0]).apply(lambda x:dmrcluster_m.append(x.split('|')))
@@ -324,18 +346,19 @@ def plotFTree(cls, reportPath, sids, cmap):
                 treestr[ed[j]] = treestr[ed[j]].split(ids[ed[j]])[0]+ids[ed[j]]+'):'+\
                                     str(cls[2][i])+','+treestr[ed[j]].split(ids[ed[j]])[1]
     
-    f = open(reportPath+".nwk", "w")
+    f = open(reportPath+"DMTree.nwk", "w")
     f.write(''.join(treestr[:-1]).replace(',)',')')[:-1])
     f.close()
     
     from Bio import Phylo
     import matplotlib.pyplot as plt
     
-    tree = Phylo.read(reportPath+".nwk", "newick")
+    tree = Phylo.read(reportPath+"DMTree.nwk", "newick")
 
     f,a = plt.subplots(figsize=[20,len(sids)/5])
     Phylo.draw(tree, axes=a, do_show=False, label_colors=cmap)
-    plt.savefig(reportPath+'.tree.jpg')
+    plt.savefig(reportPath+'DMTree.jpg', bbox_inches='tight')
+    plt.savefig(reportPath+'DMTree.pdf', bbox_inches='tight')
     
     
 def plotClustermap(mout, cls, reportPath, sids, finalCls):
@@ -430,8 +453,8 @@ def plotClustermap(mout, cls, reportPath, sids, finalCls):
             row_linkage=lk.linkage,\
             cmap='Spectral_r', figsize=[0.2*len(sids)+0.1*max([len(i) for i in sids]),0.2*len(sids)], dendrogram_ratio=0.25, xticklabels=False, yticklabels=True, \
             method='ward')
-        plt.savefig(reportPath+'.heatmap.jpg')
-        plt.savefig(reportPath+'.heatmap.pdf')
+        plt.savefig(reportPath+'Heatmap.jpg', bbox_inches='tight')
+        plt.savefig(reportPath+'Heatmap.pdf', bbox_inches='tight')
     else:
         cm = sns.clustermap(dmrmean_m,\
             row_colors=[dmrmean_m.index.map(cmap),\
@@ -439,10 +462,10 @@ def plotClustermap(mout, cls, reportPath, sids, finalCls):
             row_linkage=lk.linkage,col_cluster=False,\
             cmap='Spectral_r', figsize=[0.2*len(sids)+0.1*max([len(i) for i in sids]),0.2*len(sids)], dendrogram_ratio=0.25, xticklabels=False, yticklabels=True, \
             method='ward')
-        plt.savefig(reportPath+'.heatmap.jpg')
-        plt.savefig(reportPath+'.heatmap.pdf')
+        plt.savefig(reportPath+'Heatmap.jpg', bbox_inches='tight')
+        plt.savefig(reportPath+'Heatmap.pdf', bbox_inches='tight')
 
-    fig, ax0 = plt.subplots(figsize=(10, 10))
+    fig, ax0 = plt.subplots(figsize=(3, 3))
     X['grp'] = X.index.map(cmap)
     # print(X)
     sns.scatterplot(x=X[0],y=X[1],c=X['grp'],ax=ax0,s=30)
@@ -451,16 +474,17 @@ def plotClustermap(mout, cls, reportPath, sids, finalCls):
     legend_handles = [Patch(color=color, label=label) for label, color in label_color_dict.items()]
     ax0.legend(handles=legend_handles, ncol=1, )
 #    ax0.axis('off')
-    plt.savefig(reportPath+'.dmrpca.jpg')
+    plt.savefig(reportPath+'PCA.jpg', bbox_inches='tight')
+    plt.savefig(reportPath+'PCA.pdf', bbox_inches='tight')
 
     return cmap
 
 
 def clustering(mout, args):
     minN0 = args.minN0
-    minN = args.minN
-    minNDMR = args.minNDMR
-    mindiff_unsup = args.mindiff_unsup
+    minN = args.minNSamples
+    minSumDMRs = args.minSumDMRs
+    mindiff_unsup = args.minMethDiffHigh
 
     def rename_cls_pn2(x):
         if x.count('3')>x.count('1'):
@@ -474,12 +498,12 @@ def clustering(mout, args):
     mout['sig.comparison.bin'] = mout['sig.comparison'].apply(rename_cls_pn2)
     ranked = mout[['sig.comparison.bin','meandiffabs']].groupby('sig.comparison.bin').\
         sum()['meandiffabs'].sort_values(ascending=False)
-    cls = recurSplit(ranked.sort_values(ascending = False), minN=minN, minNDMR=minNDMR)
+    cls = recurSplit(ranked.sort_values(ascending = False), minN=minN, minSumDMRs=minSumDMRs)
     # print(cls)
     if cls is None:
         return None
 
-    reportPath = args.output+'/'+args.input.split('/')[-1]
+    reportPath = args.output+'/'
     sids = list(pd.read_table(args.input, nrows=0).columns[2:])
     
     finalCls = pd.DataFrame([i.split('|') for i in cls[0]]).sum()
@@ -493,13 +517,14 @@ def clustering(mout, args):
     finalCls = pd.DataFrame(finalCls)
     finalCls.columns = ['Group']
     finalCls.index.name = 'ID'
-    finalCls.to_csv(reportPath+'.clusters', sep='\t')
+    finalCls.to_csv(reportPath+'clusters.tsv', sep='\t')
     
-    cmap = plotClustermap(mout, cls, reportPath, sids, finalCls)
-    if args.plotTree=='T':
+    if args.visualization:
+        print(args.visualization)
+        cmap = plotClustermap(mout, cls, reportPath, sids, finalCls)
         cls_full = recurSplit(ranked.sort_values(ascending = False), \
-                              minN=minN, minNDMR=0, fulltree=True)
-        plotFTree(cls_full, reportPath, sids, cmap)
+                              minN=minN, minSumDMRs=0, fulltree=True)
+        plotDMTree(cls_full, reportPath, sids, cmap)
     
     return finalCls
 
@@ -515,7 +540,7 @@ def report(args, start_time, end_time, unmout, finalCls, mout):
     final_html = template_content.replace('<h2>Metilene Report for XXX</h2>', '<h2>Metilene Report for '+args.input.split('/')[-1]+'</h2>')
     final_html = final_html.replace('<div>Version: XXX</div><br>', '<div>Version: '+str(metilene_ver)+'</div><br>')
     final_html = final_html.replace('<div>Command: XXX</div><br>', '<div>Command: '+''.join([i+' ' for i in sys.argv])+'</div><br>')
-    final_html = final_html.replace('<div>Parameters: XXX</div><br>', '<div>Parameters: <br>'+str(args).split('Namespace')[-1][1:-1]+'</div><br>')
+    final_html = final_html.replace('<div>Parameters: XXX</div><br>', '<div>Parameters: <br>'+str(args).split('Namespace')[-1][1:-1].split(', skipMetilene')[0]+'</div><br>')
     final_html = final_html.replace('<div>Start time: XXX</div><br>', '<div>Start time: '+str(start_time)+'</div>')
     final_html = final_html.replace('<div>End time: XXX</div><br>', 'End time: '+str(end_time)+'</div><br>')
 
@@ -525,15 +550,15 @@ def report(args, start_time, end_time, unmout, finalCls, mout):
     cls_table_html = finalCls.to_html(escape=False)
     final_html = final_html.replace('<div id="pandas_table_placeholder_cluster"></div>', cls_table_html)
 
-    if args.plotTree=='T':
-        final_html = final_html.replace('./clstree.png', './'+args.input.split('/')[-1]+'.tree.jpg')
-    else:
-        final_html = final_html.replace('./clstree.png', '')
+    if not args.visualization:
+        final_html = final_html.replace('<button onclick="showPopup(\'popupTree\')">Click to show the figures</button>', '')
+    # else:
+    #     final_html = final_html.replace('./clstree.png', '')
         
-    final_html = final_html.replace('./heatmap.png', './'+args.input.split('/')[-1]+'.heatmap.jpg')
-    final_html = final_html.replace('./dmrpca.png', './'+args.input.split('/')[-1]+'.dmrpca.jpg')
+    # final_html = final_html.replace('./heatmap.png', './Heatmap.jpg')
+    # final_html = final_html.replace('./dmrpca.png', './PCA.jpg')
 
-    final_html = final_html.replace('<div>Number of supervised DMRs: XXX</div><br>', 'Number of supervised DMRs: '+str(mout.shape[0])+'</div><br>')
+    # final_html = final_html.replace('<div>Number of supervised DMRs: XXX</div><br>', 'Number of supervised DMRs: '+str(mout.shape[0])+'</div><br>')
 
     table = mout.groupby('sig.comparison').count()[['p']].sort_values('p', ascending=False)[:10]
     table.columns = ['#DMRs']
@@ -541,7 +566,7 @@ def report(args, start_time, end_time, unmout, finalCls, mout):
     def decodeSigCmp(x):
         upmlist = {'1':[], '2':[], '3':[]}
         x = x.split('|')
-        grp_dict = pd.read_table(args.output+'/'+args.input.split('/')[-1]+'.groupID',\
+        grp_dict = pd.read_table(args.output+'/group-ID.tsv',\
                                   index_col='Group_ID')
         grp_dict = grp_dict['Group'].to_dict()
         for i in range(len(x)):
@@ -549,26 +574,26 @@ def report(args, start_time, end_time, unmout, finalCls, mout):
         return 'Unmet:'+','.join(upmlist['1'])+' - vs - '+'Met:'+','.join(upmlist['3'])
     
     gseapopup = ''
-    if args.gmt and args.anno:
+    if args.genesets and args.annotation:
         import gseapy as gp
         j = 0
         for i in table.index:
-            gene_sets = args.gmt
-            gene_list = list(set(mout.loc[(mout['sig.comparison']==i)&(mout['meandiffabs']>args.mindiff_gsea)]['SYMBOL'].dropna()))
+            gene_sets = args.genesets
+            gene_list = list(set(mout.loc[(mout['sig.comparison']==i)&(mout['meandiffabs']>args.minMethDiffHigh)]['SYMBOL'].dropna()))
             
             try:
                 enr = gp.enrichr(gene_list=gene_list,
                             gene_sets=gene_sets,
                             organism='human',
-                            outdir=args.output+'/'+args.input.split('/')[-1]+'.gsea/'+i.replace('|','_'),
+                            outdir=args.output+'/GSEA/'+i.replace('|','_'),
                             cutoff = 1,
                             format = 'jpg',
                             )
             except:
                 print("GSEA error:",gene_list)
                         
-            fig_path = './'+args.input.split('/')[-1]+'.gsea/'+i.replace('|','_')+\
-                        "/"+args.gmt.split('/')[-1]+".human.enrichr.reports.jpg"
+            fig_path = './GSEA/'+i.replace('|','_')+\
+                        "/"+args.genesets.split('/')[-1]+".human.enrichr.reports.jpg"
                         
             gseapopup += "<div id=\"popupgsea"+str(j)+"\" class=\"popup\"><br>\
                 <button onclick=\"hidePopup('popupgsea"+str(j)+"')\">Close</button>\
@@ -585,7 +610,7 @@ def report(args, start_time, end_time, unmout, finalCls, mout):
     final_html = final_html.replace('<div id="pandas_table_placeholder_dmr"></div>', table_html)
     final_html = final_html.replace('<div id="gsea_placeholder"></div>', gseapopup)
     
-    with open(args.output+'/'+args.input.split('/')[-1]+'.report.html', 'w') as final_file:
+    with open(args.output+'/report.html', 'w') as final_file:
         final_file.write(final_html)
 
 
@@ -597,7 +622,7 @@ def main():
     start_time = time.ctime()
     
     args = parser.parse_args()
-    print(args)
+    # print(args)
     
     getMetilene()
     try:
@@ -605,34 +630,37 @@ def main():
     except:
         pass
         
-    if args.unsupervised=='T':
-        headerfile = args.output+'/'+args.input.split('/')[-1]+'.unsup.header'
-        preprocess(args, headerfile, 'unsup')
-        runMetilene(args, headerfile, 'unsup')
-        unmout = processOutput(args, 'unsup')
-        finalCls = clustering(unmout, args)
-        if finalCls is None:
-            print('ERROR: No cluster found. Please check the data or use smaller meandiff for clustering.')
-            return None
-
-        if args.rerun=='F':
-            return None
-        
-        headerfile = args.output+'/'+args.input.split('/')[-1]+'.header'
-        preprocess(args, headerfile, 'sup', \
-                   args.output+'/'+args.input.split('/')[-1]+'.clusters')
-        runMetilene(args, headerfile, 'sup')
-        mout = processOutput(args, 'sup', anno='T')
-
-        end_time = time.ctime()
-        report(args, start_time, end_time, unmout, finalCls, mout)
-    
-    else:
+    if args.groupinfo:
         headerfile = args.output+'/'+args.input.split('/')[-1]+'.header'
         preprocess(args, headerfile, 'sup', \
                    args.groupinfo)
         runMetilene(args, headerfile, 'sup')
         mout = processOutput(args, 'sup', anno='T')
+    
+    else:
+        headerfile = args.output+'/'+args.input.split('/')[-1]+'.unsup.header'
+        preprocess(args, headerfile, 'unsup')
+        runMetilene(args, headerfile, 'unsup')
+        unmout = processOutput(args, 'unsup', anno='T')
+        finalCls = clustering(unmout, args)
+        if finalCls is None:
+            print('ERROR: No cluster found. Please check the data or use smaller meandiff for clustering.')
+            return None
+
+        if args.rerun==False:
+            return None
+        
+        headerfile = args.output+'/'+args.input.split('/')[-1]+'.header'
+        preprocess(args, headerfile, 'sup', \
+                   args.output+'/clusters.tsv')
+        runMetilene(args, headerfile, 'sup')
+        mout = processOutput(args, 'sup', anno='T')
+
+        end_time = time.ctime()
+        report(args, start_time, end_time, unmout, finalCls, mout)
+
+    if not args.keeptmp:
+        os.system("rm "+args.output+"/*.header")
         
         
 main()
