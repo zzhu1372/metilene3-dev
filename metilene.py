@@ -57,6 +57,9 @@ def getMetilene():
 # Run
 ###################################################################################################
 def preprocess(args, headerfile, ifsup, grpinfo=None):
+    if args.skipMetilene:
+        return None
+    
     if ifsup=='unsup':
         cols = pd.read_table(args.input, nrows=0)
         newcols = list(cols.columns)
@@ -189,6 +192,10 @@ def processOutput(args, ifsup, anno='F'):
     else:
         moutPath = args.output + '/DMRs.tsv'
     mout = pd.read_table(moutPath)
+
+    if args.skipMetilene:
+        return mout
+    
     mout['meandiffabs'] = mout['meandiff'].apply(abs)
 
     def rename_cls_pn(x):
@@ -200,9 +207,9 @@ def processOutput(args, ifsup, anno='F'):
     mout['sig.comparison'] = ( (1*(mout['meandiff']>0)).map({1:"p", 0:"n"}) \
                                      +mout['sig.comparison']).apply(rename_cls_pn)
     
-    mout['#U'] = mout['sig.comparison'].apply(lambda x:(len(x.split('1'))-1))
-    mout['#P'] = mout['sig.comparison'].apply(lambda x:(len(x.split('2'))-1))
-    mout['#M'] = mout['sig.comparison'].apply(lambda x:(len(x.split('3'))-1))
+    mout['#Hypo'] = mout['sig.comparison'].apply(lambda x:(len(x.split('1'))-1))
+    mout['#Int'] = mout['sig.comparison'].apply(lambda x:(len(x.split('2'))-1))
+    mout['#Hyper'] = mout['sig.comparison'].apply(lambda x:(len(x.split('3'))-1))
     
     def calmean(a,b,c):
         a = a.split('|')
@@ -218,21 +225,105 @@ def processOutput(args, ifsup, anno='F'):
         except:
             return None
             
-    mout['meanU'] = mout.apply(lambda x:calmean(x['mean'],x['sig.comparison'],'1'), axis=1)
-    mout['meanP'] = mout.apply(lambda x:calmean(x['mean'],x['sig.comparison'],'2'), axis=1)
-    mout['meanM'] = mout.apply(lambda x:calmean(x['mean'],x['sig.comparison'],'3'), axis=1)
+    mout['meanHypo'] = mout.apply(lambda x:calmean(x['mean'],x['sig.comparison'],'1'), axis=1)
+    mout['meanInt'] = mout.apply(lambda x:calmean(x['mean'],x['sig.comparison'],'2'), axis=1)
+    mout['meanHyper'] = mout.apply(lambda x:calmean(x['mean'],x['sig.comparison'],'3'), axis=1)
     # print('# of processed DMRs:',mout.shape[0])
     
     if anno == 'T' and args.annotation:
         mout = chipseeker(mout, moutPath, args.annotation)
+
+    mout.to_csv(moutPath, index=False, sep='\t')
+                    
+    return mout
+
+
+def addDMTree2DMR(args, ifsup, cls, finalCls):
+    if ifsup=='unsup':
+        moutPath = args.output + '/DMRs-unsupervised.tsv'
+    else:
+        moutPath = args.output + '/DMRs.tsv'
+    mout = pd.read_table(moutPath)
+    
+    def rev123(x):
+        return x.replace('3','x').replace('1','3').replace('x','1')
         
     if ifsup=='unsup':
-        mout.to_csv(args.output + '/DMRs-unsupervised.tsv', \
-                    index=False, sep='\t')
+        def rename_cls_pn2(x):
+            if x.count('3')>x.count('1'):
+                x = x.replace('1','2')
+            elif x.count('3')<=x.count('1'):
+                x = x.replace('3','2')
+            return x
+        mout['sig.comparison.bin'] = mout['sig.comparison'].apply(rename_cls_pn2)
+
+        cls_id = {}
+        for i in cls[0]:
+            finalCls[i] = i.split('|')
+            tmp = pd.crosstab(finalCls['Group'],finalCls[i])
+            for j in tmp.columns:
+                tmp[j] = (tmp[j]>0).map({True:str(j),False:''})
+            cls_id[i] = '|'.join(list(tmp.T.sum().sort_index()))
+        for i in cls[0]:
+            finalCls[cls_id[i]] = finalCls[i]
+        finalCls.drop(columns=cls[0]).to_csv(args.output + '/clusters.tsv', sep='\t')
+
+        def findDMTreeID(a, b, c, d):
+            a = a.split('|')
+            b = b.split('|')
+            num = 0
+            all = 0
+            for i in range(len(a)):
+                if a[i] != '0':
+                    if a[i] != b[i]:
+                        num += 1
+                    all += 1
+            if num == 0 and all > 0:
+                return d+c
+            else:
+                return ''
+            
+        mout['DMTree'] = ''
+        for i in cls[0]:
+            mout['DMTree'] += mout['sig.comparison.bin'].apply(lambda x:findDMTreeID(i,x,cls_id[i]+',','P'))
+            mout['DMTree'] += mout['sig.comparison'].apply(lambda x:findDMTreeID(rev123(i),x,cls_id[i]+',','N'))
+
     else:
-        mout.to_csv(args.output + '/DMRs.tsv', \
-                    index=False, sep='\t')
-                    
+        cls_id = {}
+        for i in cls[0]:
+            finalCls[i] = i.split('|')
+            tmp = pd.crosstab(finalCls['Group'],finalCls[i])
+            for j in tmp.columns:
+                tmp[j] = (tmp[j]>0).map({True:str(j),False:''})
+            cls_id[i] = '|'.join(list(tmp.T.sum().sort_index()))
+
+        def findDMTreeIDsup(a, b, c, d):
+            a = a.split('|')
+            if ('1' in a) and ('3' in a):
+                b = b.split('|')
+            else:
+                if '3' in a:
+                    b = b.replace('1','2').split('|')
+                else:
+                    b = b.replace('3','2').split('|')
+            num = 0
+            all = 0
+            for i in range(len(a)):
+                if a[i] != '0':
+                    if a[i] != b[i]:
+                        num += 1
+                    all += 1
+            if num == 0 and all > 0:
+                return d+c
+            else:
+                return ''
+            
+        mout['DMTree'] = ''
+        for i in cls[0]:
+            mout['DMTree'] += mout['sig.comparison'].apply(lambda x:findDMTreeIDsup(cls_id[i],x,cls_id[i]+',','P'))
+            mout['DMTree'] += mout['sig.comparison'].apply(lambda x:findDMTreeIDsup(rev123(cls_id[i]),x,cls_id[i]+',','N'))
+
+    mout[mout.columns[~mout.columns.str.contains('sig.comparison.bin')]].to_csv(moutPath, index=False, sep='\t')
     return mout
 
 
@@ -402,7 +493,7 @@ def plotClustermap(mout, cls, reportPath, sids, finalCls):
     
     # print(dmrcluster_m )
     cm = sns.clustermap(dmrcluster_m, metric=td2,\
-                        figsize=[3,3],row_cluster=True,col_cluster=False,\
+                        figsize=[4,4],row_cluster=True,col_cluster=False,\
                          dendrogram_ratio=0.2, colors_ratio=0.15, xticklabels=False, yticklabels=False, \
                         method='complete', cmap='Spectral_r')
     lk = cm.dendrogram_row
@@ -453,8 +544,8 @@ def plotClustermap(mout, cls, reportPath, sids, finalCls):
             row_linkage=lk.linkage,\
             cmap='Spectral_r', figsize=[0.2*len(sids)+0.1*max([len(i) for i in sids]),0.2*len(sids)], dendrogram_ratio=0.25, xticklabels=False, yticklabels=True, \
             method='ward')
-        plt.savefig(reportPath+'Heatmap.jpg', bbox_inches='tight')
-        plt.savefig(reportPath+'Heatmap.pdf', bbox_inches='tight')
+        plt.savefig(reportPath+'heatmap.jpg', bbox_inches='tight')
+        plt.savefig(reportPath+'heatmap.pdf', bbox_inches='tight')
     else:
         cm = sns.clustermap(dmrmean_m,\
             row_colors=[dmrmean_m.index.map(cmap),\
@@ -462,8 +553,8 @@ def plotClustermap(mout, cls, reportPath, sids, finalCls):
             row_linkage=lk.linkage,col_cluster=False,\
             cmap='Spectral_r', figsize=[0.2*len(sids)+0.1*max([len(i) for i in sids]),0.2*len(sids)], dendrogram_ratio=0.25, xticklabels=False, yticklabels=True, \
             method='ward')
-        plt.savefig(reportPath+'Heatmap.jpg', bbox_inches='tight')
-        plt.savefig(reportPath+'Heatmap.pdf', bbox_inches='tight')
+        plt.savefig(reportPath+'heatmap.jpg', bbox_inches='tight')
+        plt.savefig(reportPath+'heatmap.pdf', bbox_inches='tight')
 
     fig, ax0 = plt.subplots(figsize=(3, 3))
     X['grp'] = X.index.map(cmap)
@@ -489,11 +580,11 @@ def clustering(mout, args):
     def rename_cls_pn2(x):
         if x.count('3')>x.count('1'):
             x = x.replace('1','2')
-        elif x.count('3')<x.count('1'):
+        elif x.count('3')<=x.count('1'):
             x = x.replace('3','2')
         return x
-    mout = mout.loc[(mout['#U']>=minN0)\
-                    &(mout['#M']>=minN0)\
+    mout = mout.loc[(mout['#Hypo']>=minN0)\
+                    &(mout['#Hyper']>=minN0)\
                     &(mout['meandiffabs']>mindiff_unsup)]
     mout['sig.comparison.bin'] = mout['sig.comparison'].apply(rename_cls_pn2)
     ranked = mout[['sig.comparison.bin','meandiffabs']].groupby('sig.comparison.bin').\
@@ -501,7 +592,7 @@ def clustering(mout, args):
     cls = recurSplit(ranked.sort_values(ascending = False), minN=minN, minSumDMRs=minSumDMRs)
     # print(cls)
     if cls is None:
-        return None
+        return (None, None)
 
     reportPath = args.output+'/'
     sids = list(pd.read_table(args.input, nrows=0).columns[2:])
@@ -520,18 +611,131 @@ def clustering(mout, args):
     finalCls.to_csv(reportPath+'clusters.tsv', sep='\t')
     
     if args.visualization:
-        print(args.visualization)
+        # print(args.visualization)
         cmap = plotClustermap(mout, cls, reportPath, sids, finalCls)
         cls_full = recurSplit(ranked.sort_values(ascending = False), \
                               minN=minN, minSumDMRs=0, fulltree=True)
         plotDMTree(cls_full, reportPath, sids, cmap)
     
-    return finalCls
+    return (finalCls, cls)
 
 
 
 ###################################################################################################
-# Run
+# GSEA
+###################################################################################################
+def gsea(args, finalCls, mout, unmout=None):
+    import gseapy as gp
+    
+    gseapopup = ''
+    tables = []
+    
+    dmrs_list = [mout,]
+    if unmout is not None:
+        dmrs_list.append(unmout)
+
+    uors = 'sup'
+    for dmrs in dmrs_list:
+        table = pd.DataFrame([dmrs['DMTree'].str.contains(('P'+i+',').replace('|','\|')).sum() for i in finalCls.columns[1:]], list(finalCls.columns[1:]))
+        table.columns = ['#DMRs']
+        table['#DMRs_rev'] = [dmrs['DMTree'].str.contains(('N'+i+',').replace('|','\|')).sum() for i in table.index]
+        # print(table)
+        
+        def decodeSigCmp(x):
+            upmlist = {'1':[], '2':[], '3':[], '0':[]}
+            x = x.split('|')
+            grp_dict = pd.read_table(args.output+'/group-ID.tsv',\
+                                    index_col='Group_ID')
+            grp_dict = grp_dict['Group'].to_dict()
+            for i in range(len(x)):
+                upmlist[x[i]].append(grp_dict[i])
+            return [upmlist, 'Hypo:'+','.join(upmlist['1'])+' - vs - '+'Hyper:'+','.join(upmlist['3'])]
+        
+        def decodeSigCmpLR(x):
+            upmlist = {'1':[], '2':[], '3':[], '0':[]}
+            x = x.split('|')
+            grp_dict = pd.read_table(args.output+'/group-ID.tsv',\
+                                    index_col='Group_ID')
+            grp_dict = grp_dict['Group'].to_dict()
+            for i in range(len(x)):
+                upmlist[x[i]].append(grp_dict[i])
+            
+            if len(upmlist['3'])==0:
+                return {'L':upmlist['1'], 'R':upmlist['2']}
+            else:
+                return {'L':upmlist['2'], 'R':upmlist['3']}
+        
+        table['Left_Child'] = [','.join(decodeSigCmpLR(i)['L']) for i in table.index]
+        table['Right_Child'] = [','.join(decodeSigCmpLR(i)['R']) for i in table.index]
+
+        if args.genesets and args.annotation:
+            import gseapy as gp
+            j = 0
+            for i in table.index:
+                gene_sets = args.genesets
+                gene_list = list(set(dmrs.loc[(dmrs['DMTree'].str.contains(('P'+i+',').replace('|','\|')))&(dmrs['meandiffabs']>args.minMethDiffHigh)]['SYMBOL'].dropna()))
+                
+                try:
+                    enr = gp.enrichr(gene_list=gene_list,
+                                gene_sets=gene_sets,
+                                organism='human',
+                                outdir=args.output+'/GSEA/'+'P'+uors+i.replace('|','_'),
+                                cutoff = 1,
+                                format = 'jpg',
+                                )
+                except:
+                    print("GSEA error:",gene_list)
+                            
+                fig_path = './GSEA/'+'P'+uors+i.replace('|','_')+\
+                            "/"+args.genesets.split('/')[-1]+".human.enrichr.reports.jpg"
+                            
+                gseapopup += "<div id=\"popupgsea"+'P'+uors+str(j)+"\" class=\"popup\"><br>\
+                    <button onclick=\"hidePopup('popupgsea"+'P'+uors+str(j)+"')\">Close</button>\
+                        <p>GSEA for "+'P'+uors+i+"</p><img src="+fig_path+" height=\"200\"><br></div>\n"
+                j+=1
+                
+            table['GSEA'] = ["<button onclick=\"showPopup('popupgsea"+'P'+uors+str(i)+\
+                            "')\">Click to show GSEA results</button>" \
+                            for i in range(table.shape[0])]
+            
+            j = 0
+            for i in table.index:
+                gene_sets = args.genesets
+                gene_list = list(set(dmrs.loc[(dmrs['DMTree'].str.contains(('N'+i+',').replace('|','\|')))&(dmrs['meandiffabs']>args.minMethDiffHigh)]['SYMBOL'].dropna()))
+                
+                try:
+                    enr = gp.enrichr(gene_list=gene_list,
+                                gene_sets=gene_sets,
+                                organism='human',
+                                outdir=args.output+'/GSEA/'+'N'+uors+i.replace('|','_'),
+                                cutoff = 1,
+                                format = 'jpg',
+                                )
+                except:
+                    print("GSEA error:",gene_list)
+                            
+                fig_path = './GSEA/'+'N'+uors+i.replace('|','_')+\
+                            "/"+args.genesets.split('/')[-1]+".human.enrichr.reports.jpg"
+                            
+                gseapopup += "<div id=\"popupgsea"+'N'+uors+str(j)+"\" class=\"popup\"><br>\
+                    <button onclick=\"hidePopup('popupgsea"+'N'+uors+str(j)+"')\">Close</button>\
+                        <p>GSEA for "+'N'+uors+i+"</p><img src="+fig_path+" height=\"200\"><br></div>\n"
+                j+=1
+                
+            table['GSEA_rev'] = ["<button onclick=\"showPopup('popupgsea"+'N'+uors+str(i)+\
+                            "')\">Click to show GSEA results</button>" \
+                            for i in range(table.shape[0])]
+        
+        table.index = range(len(table.index))#[decodeSigCmp(i) for i in table.index]
+        tables.append(table)
+        uors = 'unsup'
+    
+    return (gseapopup, tables)
+
+
+
+###################################################################################################
+# HTML report
 ###################################################################################################
 def report(args, start_time, end_time, unmout, finalCls, mout):
     with open(os.path.realpath(__file__)[:-len('metilene.py')]+'template.html', 'r') as template_file:
@@ -552,64 +756,15 @@ def report(args, start_time, end_time, unmout, finalCls, mout):
 
     if not args.visualization:
         final_html = final_html.replace('<button onclick="showPopup(\'popupTree\')">Click to show the figures</button>', '')
-    # else:
-    #     final_html = final_html.replace('./clstree.png', '')
-        
-    # final_html = final_html.replace('./heatmap.png', './Heatmap.jpg')
-    # final_html = final_html.replace('./dmrpca.png', './PCA.jpg')
 
-    # final_html = final_html.replace('<div>Number of supervised DMRs: XXX</div><br>', 'Number of supervised DMRs: '+str(mout.shape[0])+'</div><br>')
-
-    table = mout.groupby('sig.comparison').count()[['p']].sort_values('p', ascending=False)[:10]
-    table.columns = ['#DMRs']
+    final_html = final_html.replace('<div>Number of supervised DMRs: XXX</div><br>', 'Number of supervised DMRs: '+str(mout.shape[0])+'</div><br>')
     
-    def decodeSigCmp(x):
-        upmlist = {'1':[], '2':[], '3':[]}
-        x = x.split('|')
-        grp_dict = pd.read_table(args.output+'/group-ID.tsv',\
-                                  index_col='Group_ID')
-        grp_dict = grp_dict['Group'].to_dict()
-        for i in range(len(x)):
-            upmlist[x[i]].append(grp_dict[i])
-        return 'Unmet:'+','.join(upmlist['1'])+' - vs - '+'Met:'+','.join(upmlist['3'])
-    
-    gseapopup = ''
     if args.genesets and args.annotation:
-        import gseapy as gp
-        j = 0
-        for i in table.index:
-            gene_sets = args.genesets
-            gene_list = list(set(mout.loc[(mout['sig.comparison']==i)&(mout['meandiffabs']>args.minMethDiffHigh)]['SYMBOL'].dropna()))
-            
-            try:
-                enr = gp.enrichr(gene_list=gene_list,
-                            gene_sets=gene_sets,
-                            organism='human',
-                            outdir=args.output+'/GSEA/'+i.replace('|','_'),
-                            cutoff = 1,
-                            format = 'jpg',
-                            )
-            except:
-                print("GSEA error:",gene_list)
-                        
-            fig_path = './GSEA/'+i.replace('|','_')+\
-                        "/"+args.genesets.split('/')[-1]+".human.enrichr.reports.jpg"
-                        
-            gseapopup += "<div id=\"popupgsea"+str(j)+"\" class=\"popup\"><br>\
-                <button onclick=\"hidePopup('popupgsea"+str(j)+"')\">Close</button>\
-                    <p>GSEA for "+decodeSigCmp(i)+"</p><img src="+fig_path+" height=\"200\"><br></div>\n"
-            j+=1
-            
-        table['GSEA'] = ["<button onclick=\"showPopup('popupgsea"+str(i)+\
-                        "')\">Click to show GSEA results</button>" \
-                        for i in range(table.shape[0])]
-    
-    table.index = [decodeSigCmp(i) for i in table.index]
+        gseapopup, tables = gsea(args, finalCls, mout, unmout)
+        final_html = final_html.replace('<div id="pandas_table_placeholder_dmr_sup"></div>', tables[0].to_html(escape=False))
+        final_html = final_html.replace('<div id="pandas_table_placeholder_dmr_unsup"></div>', tables[1].to_html(escape=False))
+        final_html = final_html.replace('<div id="gsea_placeholder"></div>', gseapopup)
 
-    table_html = table.to_html(escape=False)
-    final_html = final_html.replace('<div id="pandas_table_placeholder_dmr"></div>', table_html)
-    final_html = final_html.replace('<div id="gsea_placeholder"></div>', gseapopup)
-    
     with open(args.output+'/report.html', 'w') as final_file:
         final_file.write(final_html)
 
@@ -642,7 +797,7 @@ def main():
         preprocess(args, headerfile, 'unsup')
         runMetilene(args, headerfile, 'unsup')
         unmout = processOutput(args, 'unsup', anno='T')
-        finalCls = clustering(unmout, args)
+        finalCls, cls = clustering(unmout, args)
         if finalCls is None:
             print('ERROR: No cluster found. Please check the data or use smaller meandiff for clustering.')
             return None
@@ -650,17 +805,20 @@ def main():
         if args.rerun==False:
             return None
         
+        unmout = addDMTree2DMR(args, 'unsup', cls, finalCls)
+
         headerfile = args.output+'/'+args.input.split('/')[-1]+'.header'
         preprocess(args, headerfile, 'sup', \
                    args.output+'/clusters.tsv')
         runMetilene(args, headerfile, 'sup')
         mout = processOutput(args, 'sup', anno='T')
+        mout = addDMTree2DMR(args, 'sup', cls, finalCls)
 
         end_time = time.ctime()
-        report(args, start_time, end_time, unmout, finalCls, mout)
+        report(args, start_time, end_time, unmout, finalCls.drop(columns=cls[0]), mout)
 
     if not args.keeptmp:
-        os.system("rm "+args.output+"/*.header")
-        
+        if not args.skipMetilene:
+            os.system("rm "+args.output+"/*.header")
         
 main()
