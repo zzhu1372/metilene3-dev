@@ -345,7 +345,7 @@ def recurSplit(arr, ref=0, depth=0, nsep=0, minN=2, minSumDMRs=100, fulltree=Fal
         for i in range(len(arr)):
             newref = arr.index[0]
             nsep = arr.iloc[0]
-            if nsep > minSumDMRs and numVS(newref) >= minN:#0.5*nonsep:
+            if arr.iloc[i] > minSumDMRs and numVS(arr.index[i]) >= minN:#0.5*nonsep:
                 newref = arr.index[i]
                 nsep = arr.iloc[i]
                 ifSig = 1
@@ -589,8 +589,9 @@ def clustering(mout, args):
     mout['sig.comparison.bin'] = mout['sig.comparison'].apply(rename_cls_pn2)
     ranked = mout[['sig.comparison.bin','meandiffabs']].groupby('sig.comparison.bin').\
         sum()['meandiffabs'].sort_values(ascending=False)
+    print(ranked)
     cls = recurSplit(ranked.sort_values(ascending = False), minN=minN, minSumDMRs=minSumDMRs)
-    # print(cls)
+    print(cls, minN, minSumDMRs)
     if cls is None:
         return (None, None)
 
