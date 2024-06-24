@@ -35,6 +35,7 @@ parser.add_argument('-w', "--minSumDMRs", type=int, default=100)
 # optional
 parser.add_argument('-plot', "--visualization", type=lambda x: (str(x).lower() == 'true'), default=False)
 parser.add_argument('-anno', "--annotation",)
+parser.add_argument('-refs', "--refSeq",)
 parser.add_argument('-gsea', "--genesets",)
 
 # hidden
@@ -125,13 +126,13 @@ def runMetilene(args, headerfile, ifsup):
                     
                     " -M "+str(args.maxdist)+\
                     " -m "+str(args.minCpGs)+\
-                    " -d "+str(args.minMethDiffHigh)+\
+                    " -d "+str(args.minMethDiff)+\
                     " -v "+str(args.valley)+\
                     
                     " -r "+str(args.minDMR)+\
-                    " -w "+str(args.minMethDiffHigh)+\
+                    " -w "+str(args.minMethDiff)+\
                     " -e "+str(args.clusteringRatio)+\
-                    " -q "+str(args.minMethDiffHigh)+\
+                    " -q "+str(args.minMethDiff)+\
                     
                     " -H "+headerfile+\
                     " -l 1 "+args.input+" > "+\
@@ -186,6 +187,19 @@ def chipseeker(mout, moutPath, anno):
     return mout
 
 
+def addSeq(mout, refSeq):
+    from Bio import SeqIO
+
+    ref = {}
+    with open(refSeq) as handle:
+        for record in SeqIO.parse(handle, "fasta"):
+            ref[record.id] = record.seq
+
+    mout['seq'] = mout.apply(lambda x:str(ref[x['chr']][x['start']-1:x['stop']]), axis=1)
+
+    return mout
+
+
 def processOutput(args, ifsup, anno='F'):
     if ifsup=='unsup':
         moutPath = args.output + '/DMRs-unsupervised.tsv'
@@ -232,6 +246,9 @@ def processOutput(args, ifsup, anno='F'):
     
     if anno == 'T' and args.annotation:
         mout = chipseeker(mout, moutPath, args.annotation)
+
+    if anno == 'T' and args.refSeq:
+        mout = addSeq(mout, args.refSeq)
 
     mout.to_csv(moutPath, index=False, sep='\t')
                     
@@ -589,9 +606,9 @@ def clustering(mout, args):
     mout['sig.comparison.bin'] = mout['sig.comparison'].apply(rename_cls_pn2)
     ranked = mout[['sig.comparison.bin','meandiffabs']].groupby('sig.comparison.bin').\
         sum()['meandiffabs'].sort_values(ascending=False)
-    print(ranked)
+    # print(ranked)
     cls = recurSplit(ranked.sort_values(ascending = False), minN=minN, minSumDMRs=minSumDMRs)
-    print(cls, minN, minSumDMRs)
+    # print(cls, minN, minSumDMRs)
     if cls is None:
         return (None, None)
 
