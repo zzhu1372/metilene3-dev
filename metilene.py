@@ -427,7 +427,7 @@ def recurSplit(arr, ref=0, depth=0, nsep=0, minN=2, minSumDMRs=100, fulltree=Fal
         return (finalList, depthList, weightList)
 
     
-def plotDMTree(cls, reportPath, sids, cmap):
+def plotDMTree(cls, finalCls, reportPath, sids, cmap):
     k = len(cls[0])
     dmrcluster_m = []
     pd.Series(cls[0]).apply(lambda x:dmrcluster_m.append(x.split('|')))
@@ -437,8 +437,11 @@ def plotDMTree(cls, reportPath, sids, cmap):
     dmrcluster_m.columns = sids
     dmrcluster_m = dmrcluster_m.T
     dmrcluster_m = dmrcluster_m.sort_values(list(range(len(cls[2]))))
+    dmrcluster_m.sort_values(list(range(len(cls[2])))).to_csv(reportPath+'/clusters_detailed.tsv', sep='\t')
     
-    ids = list(dmrcluster_m.sort_values(list(range(len(cls[2])))).index+',')+['']
+    clsD = finalCls['Group'].to_dict()
+    ids = list(dmrcluster_m.sort_values(list(range(len(cls[2])))).index.map(clsD)+'_'+\
+               dmrcluster_m.sort_values(list(range(len(cls[2])))).index+',')+['']
     treestr = ids.copy()
     
     for i in range(len(cls[2])):
@@ -457,6 +460,10 @@ def plotDMTree(cls, reportPath, sids, cmap):
     f = open(reportPath+"DMTree.nwk", "w")
     f.write(''.join(treestr[:-1]).replace(',)',')')[:-1])
     f.close()
+
+    oldkeys = list(cmap.keys())
+    for i in oldkeys:
+        cmap[clsD[i]+'_'+i] = cmap[i]
     
     from Bio import Phylo
     import matplotlib.pyplot as plt
@@ -485,7 +492,7 @@ def plotClustermap(mout, cls, reportPath, sids, finalCls, cls_full):
     
     dmrcluster_m.columns = sids
     dmrcluster_m = dmrcluster_m.T
-    dmrcluster_m = dmrcluster_m.sort_values(list(range(len(cls[2]))))
+    dmrcluster_m = dmrcluster_m.sort_values(list(range(len(cls_full[2]))))
     
     dmrmean_m = [] # for pCA
     mout['mean'].apply(lambda x:dmrmean_m.append(x.split('|')))
@@ -517,11 +524,11 @@ def plotClustermap(mout, cls, reportPath, sids, finalCls, cls_full):
         return d
     
     # print(dmrcluster_m )
-    cm = sns.clustermap(dmrcluster_m, metric=td2,\
-                        figsize=[4,4],row_cluster=True,col_cluster=False,\
-                         dendrogram_ratio=0.2, colors_ratio=0.15, xticklabels=False, yticklabels=False, \
-                        method='complete', cmap='Spectral_r')
-    lk = cm.dendrogram_row
+    # cm = sns.clustermap(dmrcluster_m, metric=td2,\
+    #                     figsize=[4,4],row_cluster=True,col_cluster=False,\
+    #                      dendrogram_ratio=0.2, colors_ratio=0.15, xticklabels=False, yticklabels=False, \
+    #                     method='complete', cmap='Spectral_r')
+    # lk = cm.dendrogram_row
     # print(lk)
     # print(cls)
     dmrmean_m = []
@@ -578,21 +585,25 @@ def plotClustermap(mout, cls, reportPath, sids, finalCls, cls_full):
     for i in dmrmean_m.index:
         cmap[i] = clsCD[clsD.to_dict()[i]]
 
+    dmrmean_m_rename = dmrmean_m.loc[dmrcluster_m.index].copy()
+    dmrmean_m_rename.index = dmrmean_m_rename.index.map(clsD)+' '+dmrmean_m_rename.index
+    print(dmrmean_m_rename.index,dmrmean_m.index)
     if dmrmean_m.shape[1]>1:
-        cm = sns.clustermap(dmrmean_m,\
+        cm = sns.clustermap(dmrmean_m_rename,\
             row_colors=[dmrmean_m.index.map(cmap),\
                         (dmrmean_m[0]=='NO').map({False:'white'})],\
-            row_linkage=lk.linkage,\
-            col_cluster=False,\
+            # row_linkage=lk.linkage,\
+            col_cluster=False,row_cluster=False,\
             cmap='Spectral_r', figsize=[0.2*len(sids)+0.1*max([len(i) for i in sids]),0.2*len(sids)], dendrogram_ratio=0.25, xticklabels=False, yticklabels=True, \
             method='ward')
         plt.savefig(reportPath+'heatmap.jpg', bbox_inches='tight')
         plt.savefig(reportPath+'heatmap.pdf', bbox_inches='tight')
     else:
-        cm = sns.clustermap(dmrmean_m,\
+        cm = sns.clustermap(dmrmean_m_rename,\
             row_colors=[dmrmean_m.index.map(cmap),\
                         (dmrmean_m[0]=='NO').map({False:'white'})],\
-            row_linkage=lk.linkage,col_cluster=False,\
+            # row_linkage=lk.linkage,\
+            col_cluster=False,row_cluster=False,\
             cmap='Spectral_r', figsize=[0.2*len(sids)+0.1*max([len(i) for i in sids]),0.2*len(sids)], dendrogram_ratio=0.25, xticklabels=False, yticklabels=True, \
             method='ward')
         plt.savefig(reportPath+'heatmap.jpg', bbox_inches='tight')
@@ -658,7 +669,7 @@ def clustering(mout, args):
         cls_full = recurSplit(ranked.sort_values(ascending = False), \
                               minN=minN, minSumDMRs=0, fulltree=True)
         cmap = plotClustermap(mout, cls, reportPath, sids, finalCls, cls_full)
-        plotDMTree(cls_full, reportPath, sids, cmap)
+        plotDMTree(cls_full, finalCls, reportPath, sids, cmap)
     
     return (finalCls, cls)
 
