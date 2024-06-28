@@ -469,7 +469,7 @@ def plotDMTree(cls, reportPath, sids, cmap):
     plt.savefig(reportPath+'DMTree.pdf', bbox_inches='tight')
     
     
-def plotClustermap(mout, cls, reportPath, sids, finalCls):
+def plotClustermap(mout, cls, reportPath, sids, finalCls, cls_full):
     import random
     import seaborn as sns
     import matplotlib.pyplot as plt
@@ -479,7 +479,7 @@ def plotClustermap(mout, cls, reportPath, sids, finalCls):
     
     k = len(cls[0])
     dmrcluster_m = []
-    pd.Series(cls[0]).apply(lambda x:dmrcluster_m.append(x.split('|')))
+    pd.Series(cls_full[0]).apply(lambda x:dmrcluster_m.append(x.split('|')))
     dmrcluster_m = pd.DataFrame(dmrcluster_m)
     dmrcluster_m = dmrcluster_m.astype(float)
     
@@ -496,15 +496,23 @@ def plotClustermap(mout, cls, reportPath, sids, finalCls):
     X = pd.DataFrame(pca.fit_transform(np.array(dmrmean_m)))
     X.index = dmrmean_m.index
 
-    X['k'] = X[0]-X[0].min()
-    X['k'] = X['k']/X['k'].max()
-    dmrcluster_m[k] = dmrcluster_m.index.map(X['k'])
+    # X['k'] = X[0]-X[0].min()
+    # X['k'] = X['k']/X['k'].max()
+    # dmrcluster_m[k] = dmrcluster_m.index.map(X['k'])
+    
+    # def td2(a,b):
+    #     d = 0.01*abs(a[-1]-b[-1])
+    #     for i in range(len(a)-1):
+    #         if a[i]!=b[i]:
+    #             d += max(cls[1])+1 - cls[1][i]
+    #             break
+    #     return d
     
     def td2(a,b):
-        d = 0.01*abs(a[-1]-b[-1])
-        for i in range(len(a)-1):
+        d = 0
+        for i in range(len(a)):
             if a[i]!=b[i]:
-                d += max(cls[1])+1 - cls[1][i]
+                d += max(cls_full[1])+1 - cls_full[1][i]
                 break
         return d
     
@@ -534,9 +542,25 @@ def plotClustermap(mout, cls, reportPath, sids, finalCls):
         
     denovo_pn2 = mout[['mean','sig.comparison.bin']]
     denovo_pn2['tmp'] = 0
+    c = 2**100
+    def allrelated(x):
+        if x.find('1') > -1:
+            return [x,\
+                    x.replace('2','3').replace('1','2'),\
+                    x.replace('1','3'),\
+                    x.replace('1','x').replace('2','1').replace('x','2'),\
+                    ]
+        else:
+            return [x,\
+                    x.replace('2','1').replace('3','2'),\
+                    x.replace('3','1'),\
+                    x.replace('3','x').replace('2','3').replace('x','2'),\
+                    ]
     for i in cls[0]:
-        denovo_pn2['tmp'] += 1*(denovo_pn2['sig.comparison.bin'].apply(lambda x:editD(i,x))==0)
-    denovo_filtered = denovo_pn2.loc[denovo_pn2['tmp']>0]
+        for j in allrelated(i):
+            denovo_pn2['tmp'] += c*(denovo_pn2['sig.comparison.bin'].apply(lambda x:editD(j,x))==0)
+            c = c/2
+    denovo_filtered = denovo_pn2.loc[denovo_pn2['tmp']>0].sort_values('tmp', ascending=False)
     denovo_filtered['mean'].apply(lambda x:dmrmean_m.append(x.split('|')))
     # print(denovo_filtered)
     
@@ -559,6 +583,7 @@ def plotClustermap(mout, cls, reportPath, sids, finalCls):
             row_colors=[dmrmean_m.index.map(cmap),\
                         (dmrmean_m[0]=='NO').map({False:'white'})],\
             row_linkage=lk.linkage,\
+            col_cluster=False,\
             cmap='Spectral_r', figsize=[0.2*len(sids)+0.1*max([len(i) for i in sids]),0.2*len(sids)], dendrogram_ratio=0.25, xticklabels=False, yticklabels=True, \
             method='ward')
         plt.savefig(reportPath+'heatmap.jpg', bbox_inches='tight')
@@ -630,9 +655,9 @@ def clustering(mout, args):
     
     if args.visualization:
         # print(args.visualization)
-        cmap = plotClustermap(mout, cls, reportPath, sids, finalCls)
         cls_full = recurSplit(ranked.sort_values(ascending = False), \
                               minN=minN, minSumDMRs=0, fulltree=True)
+        cmap = plotClustermap(mout, cls, reportPath, sids, finalCls, cls_full)
         plotDMTree(cls_full, reportPath, sids, cmap)
     
     return (finalCls, cls)
