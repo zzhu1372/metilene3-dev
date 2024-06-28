@@ -437,7 +437,7 @@ def plotDMTree(cls, finalCls, reportPath, sids, cmap):
     dmrcluster_m.columns = sids
     dmrcluster_m = dmrcluster_m.T
     dmrcluster_m = dmrcluster_m.sort_values(list(range(len(cls[2]))))
-    dmrcluster_m.sort_values(list(range(len(cls[2])))).to_csv(reportPath+'/clusters_detailed.tsv', sep='\t')
+    # dmrcluster_m.sort_values(list(range(len(cls[2])))).to_csv(reportPath+'/clusters_detailed.tsv', sep='\t')
     
     clsD = finalCls['Group'].to_dict()
     ids = list(dmrcluster_m.sort_values(list(range(len(cls[2])))).index.map(clsD)+'_'+\
@@ -587,15 +587,14 @@ def plotClustermap(mout, cls, reportPath, sids, finalCls, cls_full):
 
     dmrmean_m_rename = dmrmean_m.loc[dmrcluster_m.index].copy()
     dmrmean_m_rename.index = dmrmean_m_rename.index.map(clsD)+' '+dmrmean_m_rename.index
-    print(dmrmean_m_rename.index,dmrmean_m.index)
     if dmrmean_m.shape[1]>1:
         cm = sns.clustermap(dmrmean_m_rename,\
             row_colors=[dmrmean_m.index.map(cmap),\
                         (dmrmean_m[0]=='NO').map({False:'white'})],\
             # row_linkage=lk.linkage,\
             col_cluster=False,row_cluster=False,\
-            cmap='Spectral_r', figsize=[0.2*len(sids)+0.1*max([len(i) for i in sids]),0.2*len(sids)], dendrogram_ratio=0.25, xticklabels=False, yticklabels=True, \
-            method='ward')
+            cmap='Spectral_r', figsize=[0.2*len(sids)+0.1*max([len(i) for i in sids]),0.2*len(sids)], dendrogram_ratio=0.000001, xticklabels=False, yticklabels=True, \
+            method='ward', cbar_pos=None, vmax=1, vmin=0, center=0.5, colors_ratio=0.02)
         plt.savefig(reportPath+'heatmap.jpg', bbox_inches='tight')
         plt.savefig(reportPath+'heatmap.pdf', bbox_inches='tight')
     else:
@@ -604,8 +603,8 @@ def plotClustermap(mout, cls, reportPath, sids, finalCls, cls_full):
                         (dmrmean_m[0]=='NO').map({False:'white'})],\
             # row_linkage=lk.linkage,\
             col_cluster=False,row_cluster=False,\
-            cmap='Spectral_r', figsize=[0.2*len(sids)+0.1*max([len(i) for i in sids]),0.2*len(sids)], dendrogram_ratio=0.25, xticklabels=False, yticklabels=True, \
-            method='ward')
+            cmap='Spectral_r', figsize=[0.2*len(sids)+0.1*max([len(i) for i in sids]),0.2*len(sids)], dendrogram_ratio=0.000001, xticklabels=False, yticklabels=True, \
+            method='ward', cbar_pos=None, vmax=1, vmin=0, center=0.5, colors_ratio=0.02)
         plt.savefig(reportPath+'heatmap.jpg', bbox_inches='tight')
         plt.savefig(reportPath+'heatmap.pdf', bbox_inches='tight')
 
@@ -792,7 +791,7 @@ def gsea(args, finalCls, mout, unmout=None):
 # HTML report
 ###################################################################################################
 def report(args, start_time, end_time, unmout, finalCls, mout):
-    with open(os.path.realpath(__file__)[:-len('metilene.py')]+'template.html', 'r') as template_file:
+    with open(os.path.realpath(__file__)[:-len('metilene.py')]+'template_unsup.html', 'r') as template_file:
         template_content = template_file.read()
 
     final_html = template_content.replace('<h2>Metilene Report for XXX</h2>', '<h2>Metilene Report for '+args.input.split('/')[-1]+'</h2>')
