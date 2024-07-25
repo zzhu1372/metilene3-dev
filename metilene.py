@@ -547,7 +547,7 @@ def plotClustermap(mout, cls, reportPath, sids, finalCls, cls_full):
             return 0
         return num/all
         
-    denovo_pn2 = mout[['mean','sig.comparison.bin']]
+    denovo_pn2 = mout[['mean','sig.comparison','sig.comparison.bin']]
     denovo_pn2['tmp'] = 0
     c = 2**100
     def allrelated(x):
@@ -587,6 +587,9 @@ def plotClustermap(mout, cls, reportPath, sids, finalCls, cls_full):
 
     dmrmean_m_rename = dmrmean_m.loc[dmrcluster_m.index].copy()
     dmrmean_m_rename.index = dmrmean_m_rename.index.map(clsD)+' '+dmrmean_m_rename.index
+    dmrmean_m_rename.to_csv(reportPath+'heatmap.tsv', sep='\t')
+    dmrmean_m_rename_anno = pd.DataFrame(list(denovo_filtered['sig.comparison']),dmrmean_m_rename.columns)
+    dmrmean_m_rename_anno.to_csv(reportPath+'heatmap.anno.tsv', sep='\t')
     if dmrmean_m.shape[1]>1:
         cm = sns.clustermap(dmrmean_m_rename,\
             row_colors=[dmrmean_m.index.map(cmap),\
