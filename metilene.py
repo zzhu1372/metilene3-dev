@@ -58,8 +58,8 @@ def getMetilene():
 # Run
 ###################################################################################################
 def preprocess(args, headerfile, ifsup, grpinfo=None):
-    if args.skipMetilene:
-        return None
+    # if args.skipMetilene:
+    #     return None
     
     if ifsup=='unsup':
         cols = pd.read_table(args.input, nrows=0)
@@ -207,8 +207,8 @@ def processOutput(args, ifsup, anno='F'):
         moutPath = args.output + '/DMRs.tsv'
     mout = pd.read_table(moutPath)
 
-    if args.skipMetilene:
-        return mout
+    # if args.skipMetilene:
+    #     return mout
     
     mout['meandiffabs'] = mout['meandiff'].apply(abs)
 
@@ -243,7 +243,6 @@ def processOutput(args, ifsup, anno='F'):
     mout['meanInt'] = mout.apply(lambda x:calmean(x['mean'],x['sig.comparison'],'2'), axis=1)
     mout['meanHyper'] = mout.apply(lambda x:calmean(x['mean'],x['sig.comparison'],'3'), axis=1)
     # print('# of processed DMRs:',mout.shape[0])
-    
     if anno == 'T' and args.annotation:
         mout = chipseeker(mout, moutPath, args.annotation)
 
@@ -502,7 +501,8 @@ def plotClustermap(mout, cls, reportPath, sids, finalCls, cls_full):
     pca = PCA(n_components=2)
     X = pd.DataFrame(pca.fit_transform(np.array(dmrmean_m)))
     X.index = dmrmean_m.index
-
+    X.to_csv(reportPath+'PCA.tsv', sep='\t')
+    pd.DataFrame(pca.explained_variance_ratio_).to_csv(reportPath+'PCA_ratio.tsv', sep='\t')
     # X['k'] = X[0]-X[0].min()
     # X['k'] = X['k']/X['k'].max()
     # dmrcluster_m[k] = dmrcluster_m.index.map(X['k'])
@@ -820,6 +820,8 @@ def report(args, start_time, end_time, unmout, finalCls, mout):
         final_html = final_html.replace('<div id="pandas_table_placeholder_dmr_sup"></div>', tables[0].to_html(escape=False))
         final_html = final_html.replace('<div id="pandas_table_placeholder_dmr_unsup"></div>', tables[1].to_html(escape=False))
         final_html = final_html.replace('<div id="gsea_placeholder"></div>', gseapopup)
+    else:
+        final_html = final_html.replace('<div>Types of DMRs:</div>', '')
 
     with open(args.output+'/report.html', 'w') as final_file:
         final_file.write(final_html)
