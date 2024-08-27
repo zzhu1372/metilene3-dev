@@ -820,7 +820,7 @@ def report(args, start_time, end_time, unmout, finalCls, mout):
         final_html = final_html.replace('<div id="pandas_table_placeholder_dmr_sup"></div>', tables[0].to_html(escape=False))
         final_html = final_html.replace('<div id="pandas_table_placeholder_dmr_unsup"></div>', tables[1].to_html(escape=False))
         final_html = final_html.replace('<div id="gsea_placeholder"></div>', gseapopup)
-    else:
+    if not args.genesets:
         final_html = final_html.replace('<div>Types of DMRs:</div>', '')
 
     with open(args.output+'/report.html', 'w') as final_file:
