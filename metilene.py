@@ -32,6 +32,7 @@ parser.add_argument('-u', "--clusteringRatio", type=float, default=0.5)
 # DMTree
 parser.add_argument('-n', "--minNSamples", type=int, default=3)
 parser.add_argument('-w', "--minSumDMRs", type=int, default=100)
+parser.add_argument('-b', "--bidir", type=lambda x: (str(x).lower() == 'true'), default=True)
 # optional
 parser.add_argument('-plot', "--visualization", type=lambda x: (str(x).lower() == 'true'), default=False)
 parser.add_argument('-anno', "--annotation",)
@@ -116,6 +117,24 @@ def runMetilene(args, headerfile, ifsup):
                     " -H "+headerfile+\
                     " -l 1 "+args.input+" > "+\
                     args.output+'/DMRs-unsupervised.tsv' )
+        print(os.path.realpath(__file__)[:-3]+\
+                    " -t "+str(args.threads)+\
+                    " -s "+str(args.seed)+\
+                    " -p "+str(args.verbose*1)+\
+                    
+                    " -M "+str(args.maxdist)+\
+                    " -m "+str(args.minCpGs)+\
+                    " -d "+str(args.minMethDiffHigh)+\
+                    " -v "+str(args.valley)+\
+                    
+                    " -r "+str(args.minDMR)+\
+                    " -w "+str(args.minMethDiffHigh)+\
+                    " -e "+str(args.clusteringRatio)+\
+                    " -q "+str(args.minMethDiffHigh)+\
+                    
+                    " -H "+headerfile+\
+                    " -l 1 "+args.input+" > "+\
+                    args.output+'/DMRs-unsupervised.tsv' )
 
     else:
         os.system(os.path.realpath(__file__)[:-3]+\
@@ -160,12 +179,17 @@ def runMetilene(args, headerfile, ifsup):
 def chipseeker(mout, moutPath, anno):
     if anno in ['hg19','HG19']:
         anno = 'TxDb.Hsapiens.UCSC.hg19.knownGene'
+        annoDb = 'org.Hs.eg.db'
     if anno in ['hg38','HG38']:
         anno = 'TxDb.Hsapiens.UCSC.hg38.knownGene'
+        annoDb = 'org.Hs.eg.db'
+    if anno in ['mm10']:
+        anno = 'TxDb.Mmusculus.UCSC.mm10.knownGene'
+        annoDb = 'org.Mm.eg.db'
     cmd = "require("+anno+");require(ChIPseeker);"+\
     "peakfile=\'"+str(os.getcwd())+"/"+moutPath+".bed\';"+\
     "txdb<-"+anno+";"+\
-    "peakAnno <- annotatePeak(peakfile, tssRegion=c(-3000, 1000), TxDb=txdb, annoDb=\'org.Hs.eg.db\');"+\
+    "peakAnno <- annotatePeak(peakfile, tssRegion=c(-3000, 1000), TxDb=txdb, annoDb=\'"+annoDb+"\');"+\
     "write.csv(as.GRanges(peakAnno), \'"+str(os.getcwd())+"/"+moutPath+".bed.csv\')"
     
     mout.sort_values(['chr','start','stop',])[['chr','start','stop']].to_csv(\
@@ -212,37 +236,47 @@ def processOutput(args, ifsup, anno='F'):
     
     mout['meandiffabs'] = mout['meandiff'].apply(abs)
 
-    def rename_cls_pn(x):
-        x = x.replace('0','1').replace('4','3')
-        if x[0]=='p':
-            x = x.replace('1','x').replace('3','1').replace('x','3')
-        x = x[1:]
-        return x
-    mout['sig.comparison'] = ( (1*(mout['meandiff']>0)).map({1:"p", 0:"n"}) \
-                                     +mout['sig.comparison']).apply(rename_cls_pn)
-    
+    if args.bidir:
+        def rename_cls_pn(x):
+            x = x.replace('0','1').replace('4','3')
+            if x[0]=='p':
+                x = x.replace('1','x').replace('3','1').replace('x','3')
+            x = x[1:]
+            return x
+        
+        mout['sig.comparison'] = ( (1*(mout['meandiff']>0)).map({1:"p", 0:"n"}) \
+                                        +mout['sig.comparison']).apply(rename_cls_pn)
+        
+        def calmean(a,b,c):
+            a = a.split('|')
+            b = b.split('|')
+            s = 0
+            n = 0
+            for i in range(len(a)):
+                if b[i]==c:
+                    s += float(a[i])
+                    n += 1
+            try:
+                return s/n
+            except:
+                return None
+                
+        mout['meanHypo'] = mout.apply(lambda x:calmean(x['mean'],x['sig.comparison'],'1'), axis=1)
+        mout['meanInt'] = mout.apply(lambda x:calmean(x['mean'],x['sig.comparison'],'2'), axis=1)
+        mout['meanHyper'] = mout.apply(lambda x:calmean(x['mean'],x['sig.comparison'],'3'), axis=1)
+    else:
+        def rename_cls_bi(x):
+            x = x.replace('0','1').replace('4','3')
+            x = x[1:]
+            return x
+        
+        mout['sig.comparison'] = ( (1*(mout['meandiff']>0)).map({1:"p", 0:"n"}) \
+                                        +mout['sig.comparison']).apply(rename_cls_bi)
+
     mout['#Hypo'] = mout['sig.comparison'].apply(lambda x:(len(x.split('1'))-1))
     mout['#Int'] = mout['sig.comparison'].apply(lambda x:(len(x.split('2'))-1))
     mout['#Hyper'] = mout['sig.comparison'].apply(lambda x:(len(x.split('3'))-1))
     
-    def calmean(a,b,c):
-        a = a.split('|')
-        b = b.split('|')
-        s = 0
-        n = 0
-        for i in range(len(a)):
-            if b[i]==c:
-                s += float(a[i])
-                n += 1
-        try:
-            return s/n
-        except:
-            return None
-            
-    mout['meanHypo'] = mout.apply(lambda x:calmean(x['mean'],x['sig.comparison'],'1'), axis=1)
-    mout['meanInt'] = mout.apply(lambda x:calmean(x['mean'],x['sig.comparison'],'2'), axis=1)
-    mout['meanHyper'] = mout.apply(lambda x:calmean(x['mean'],x['sig.comparison'],'3'), axis=1)
-    # print('# of processed DMRs:',mout.shape[0])
     if anno == 'T' and args.annotation:
         mout = chipseeker(mout, moutPath, args.annotation)
 
