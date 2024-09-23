@@ -14,29 +14,29 @@ metilene_ver = 3.0
 parser = argparse.ArgumentParser(description='.')
 # IO
 parser.add_argument('-i', "--input", help='the input methylation data',)
-parser.add_argument('-g', "--groupinfo",)
-parser.add_argument('-o', "--output",)
+parser.add_argument('-g', "--groupinfo", help='(optional) the input group information table',)
+parser.add_argument('-o', "--output", help='the output directory',)
 # system
-parser.add_argument('-t', "--threads", type=int, default=1)
-parser.add_argument('-s', "--seed", type=int, default=1)
-parser.add_argument('-O', "--outputImputed", type=lambda x: (str(x).lower() == 'true'), default=False)
-parser.add_argument('-p', "--verbose", type=lambda x: (str(x).lower() == 'true'), default=False)
+parser.add_argument('-t', "--threads", type=int, default=1, help='(optional) number of threads',)
+parser.add_argument('-s', "--seed", type=int, default=1, help='(optional) set seed for random generator',)
+parser.add_argument('-O', "--outputImputed", type=lambda x: (str(x).lower() == 'true'), default=False, help='(optional) True or False, save the CpG methylation matrix with imputed values as imputed.tsv',)
+parser.add_argument('-p', "--verbose", type=lambda x: (str(x).lower() == 'true'), default=False, help='(optional) True or False, track the process',)
 # DMR
-parser.add_argument('-M', "--maxdist", type=int, default=300)
-parser.add_argument('-m', "--minCpGs", type=int, default=10)
-parser.add_argument('-d', "--minMethDiff", type=float, default=0.1)
-parser.add_argument('-r', "--minDMR", type=int, default=5)
-parser.add_argument('-v', "--valley", type=float, default=0.7)
-parser.add_argument('-D', "--minMethDiffHigh", type=float, default=0.5)
-parser.add_argument('-u', "--clusteringRatio", type=float, default=0.5)
+parser.add_argument('-M', "--maxdist", type=int, default=300, help='(optional) maximum distance between two CpG',)
+parser.add_argument('-m', "--minCpGs", type=int, default=10, help='(optional) minimum CpGs',)
+parser.add_argument('-d', "--minMethDiff", type=float, default=0.1, help='(optional) minimum mean methylation difference',)
+parser.add_argument('-r', "--minDMR", type=int, default=5, help='(optional) minimum CpGs with minimum mean methylation difference in a segment',)
+parser.add_argument('-v', "--valley", type=float, default=0.7, help='(optional) a cutoff for the difference between global and regional methylation differences',)
+parser.add_argument('-D', "--minMethDiffHigh", type=float, default=0.5, help='(optional) minimum mean methylation difference for DMTree and GSEA, similar to -d but a higher value will be recommanded to reduce the number of false positive DMRs',)
+parser.add_argument('-u', "--clusteringRatio", type=float, default=0.5, help='(optional) maximum ratio of CpGs with minimum difference in a cluster',)
 # DMTree
-parser.add_argument('-n', "--minNSamples", type=int, default=3)
-parser.add_argument('-w', "--minSumDMRs", type=int, default=100)
+parser.add_argument('-n', "--minNSamples", type=int, default=3, help='(optional) minimum samples in a cluster',)
+parser.add_argument('-w', "--minSumDMRs", type=int, default=100, help='(optional) minimum sum of DMR weights to split samples',)
 # optional
-parser.add_argument('-plot', "--visualization", type=lambda x: (str(x).lower() == 'true'), default=False)
-parser.add_argument('-anno', "--annotation",)
-parser.add_argument('-refs', "--refSeq",)
-parser.add_argument('-gsea', "--genesets",)
+parser.add_argument('-plot', "--visualization", type=lambda x: (str(x).lower() == 'true'), default=False, help='(optional) plot PCA and heatmap based on DMR methylation',)
+parser.add_argument('-anno', "--annotation", help='(optional) hg19 or hg38, use ChIPseeker to annotate the DMRs',)
+parser.add_argument('-refs', "--refSeq", help='(optional) reference genome, for sequence annotation',)
+parser.add_argument('-gsea', "--genesets", help='(optional) geneset gmt file for GSEA',)
 
 # hidden
 parser.add_argument('-sk', "--skipMetilene", type=lambda x: (str(x).lower() == 'true'), default=False, help=argparse.SUPPRESS)
@@ -242,6 +242,43 @@ def processOutput(args, ifsup, anno='F'):
     mout['meanHypo'] = mout.apply(lambda x:calmean(x['mean'],x['sig.comparison'],'1'), axis=1)
     mout['meanInt'] = mout.apply(lambda x:calmean(x['mean'],x['sig.comparison'],'2'), axis=1)
     mout['meanHyper'] = mout.apply(lambda x:calmean(x['mean'],x['sig.comparison'],'3'), axis=1)
+
+    def sigcom2hypo(x):
+        y = []
+        for i,j in enumerate(x.split('|')):
+            if j=='1':
+                y.append(i)
+        return y
+
+    def sigcom2inter(x):
+        y = []
+        for i,j in enumerate(x.split('|')):
+            if j=='2':
+                y.append(i)
+        return y
+
+    def sigcom2hyper(x):
+        y = []
+        for i,j in enumerate(x.split('|')):
+            if j=='3':
+                y.append(i)
+        return y
+    
+    if ifsup=='unsup':
+        sids = list(pd.read_table(args.input, nrows=0).columns[2:])
+        mout['Hypo-samples'] = mout['sig.comparison'].apply(sigcom2hypo).apply(lambda x:','.join(sorted([str(sids[i]) for i in x])))
+        mout['Int-samples'] = mout['sig.comparison'].apply(sigcom2inter).apply(lambda x:','.join(sorted([str(sids[i]) for i in x])))\
+                                                                                                                            .apply(lambda x:x if x!='' else '-')
+        mout['Hyper-samples'] = mout['sig.comparison'].apply(sigcom2hyper).apply(lambda x:','.join(sorted([str(sids[i]) for i in x])))
+
+    else:
+        rename_cls = pd.read_table(args.output + '/group-ID.tsv', index_col='Group_ID')['Group'].to_dict()
+
+        mout['Hypo-groups'] = mout['sig.comparison'].apply(sigcom2hypo).apply(lambda x:','.join(sorted([rename_cls[i] for i in x])))
+        mout['Int-groups'] = mout['sig.comparison'].apply(sigcom2inter).apply(lambda x:','.join(sorted([rename_cls[i] for i in x])))\
+                                                                                                                            .apply(lambda x:x if x!='' else '-')
+        mout['Hyper-groups'] = mout['sig.comparison'].apply(sigcom2hyper).apply(lambda x:','.join(sorted([rename_cls[i] for i in x])))
+
     # print('# of processed DMRs:',mout.shape[0])
     if anno == 'T' and args.annotation:
         mout = chipseeker(mout, moutPath, args.annotation)
@@ -680,6 +717,51 @@ def clustering(mout, args):
 ###################################################################################################
 # GSEA
 ###################################################################################################
+def DMRtable(args, finalCls, mout, unmout=None):
+    tables = []
+    
+    dmrs_list = [mout,]
+    if unmout is not None:
+        dmrs_list.append(unmout)
+
+    for dmrs in dmrs_list:
+        table = pd.DataFrame([dmrs['DMTree'].str.contains(('P'+i+',').replace('|','\|')).sum() for i in finalCls.columns[1:]], list(finalCls.columns[1:]))
+        table.columns = ['#DMRs_hypo_in_left']
+        table['#DMRs_hypo_in_right'] = [dmrs['DMTree'].str.contains(('N'+i+',').replace('|','\|')).sum() for i in table.index]
+        # print(table)
+        
+        def decodeSigCmp(x):
+            upmlist = {'1':[], '2':[], '3':[], '0':[]}
+            x = x.split('|')
+            grp_dict = pd.read_table(args.output+'/group-ID.tsv',\
+                                    index_col='Group_ID')
+            grp_dict = grp_dict['Group'].to_dict()
+            for i in range(len(x)):
+                upmlist[x[i]].append(grp_dict[i])
+            return [upmlist, 'Hypo:'+','.join(upmlist['1'])+' - vs - '+'Hyper:'+','.join(upmlist['3'])]
+        
+        def decodeSigCmpLR(x):
+            upmlist = {'1':[], '2':[], '3':[], '0':[]}
+            x = x.split('|')
+            grp_dict = pd.read_table(args.output+'/group-ID.tsv',\
+                                    index_col='Group_ID')
+            grp_dict = grp_dict['Group'].to_dict()
+            for i in range(len(x)):
+                upmlist[x[i]].append(grp_dict[i])
+            
+            if len(upmlist['3'])==0:
+                return {'L':upmlist['1'], 'R':upmlist['2']}
+            else:
+                return {'L':upmlist['2'], 'R':upmlist['3']}
+        
+        table['Left_Child'] = [','.join(decodeSigCmpLR(i)['L']) for i in table.index]
+        table['Right_Child'] = [','.join(decodeSigCmpLR(i)['R']) for i in table.index]
+        
+        table.index = range(len(table.index))#[decodeSigCmp(i) for i in table.index]
+        tables.append(table)
+    
+    return tables
+
 def gsea(args, finalCls, mout, unmout=None):
     import gseapy as gp
     
@@ -693,8 +775,8 @@ def gsea(args, finalCls, mout, unmout=None):
     uors = 'sup'
     for dmrs in dmrs_list:
         table = pd.DataFrame([dmrs['DMTree'].str.contains(('P'+i+',').replace('|','\|')).sum() for i in finalCls.columns[1:]], list(finalCls.columns[1:]))
-        table.columns = ['#DMRs']
-        table['#DMRs_rev'] = [dmrs['DMTree'].str.contains(('N'+i+',').replace('|','\|')).sum() for i in table.index]
+        table.columns = ['#DMRs_hypo_in_left']
+        table['#DMRs_hypo_in_right'] = [dmrs['DMTree'].str.contains(('N'+i+',').replace('|','\|')).sum() for i in table.index]
         # print(table)
         
         def decodeSigCmp(x):
@@ -821,7 +903,9 @@ def report(args, start_time, end_time, unmout, finalCls, mout):
         final_html = final_html.replace('<div id="pandas_table_placeholder_dmr_unsup"></div>', tables[1].to_html(escape=False))
         final_html = final_html.replace('<div id="gsea_placeholder"></div>', gseapopup)
     if not args.genesets:
-        final_html = final_html.replace('<div>Types of DMRs:</div>', '')
+        tables = DMRtable(args, finalCls, mout, unmout)
+        final_html = final_html.replace('<div id="pandas_table_placeholder_dmr_sup"></div>', tables[0].to_html(escape=False))
+        final_html = final_html.replace('<div id="pandas_table_placeholder_dmr_unsup"></div>', tables[1].to_html(escape=False))
 
     with open(args.output+'/report.html', 'w') as final_file:
         final_file.write(final_html)
@@ -853,8 +937,12 @@ def main():
     
     args = parser.parse_args()
     # print(args)
+    # check IO:
+    if not (args.input and args.output):
+        print('ERROR: please provide both input filename and output folder.')
+        return None
     
-    getMetilene()
+    # getMetilene()
     try:
         os.mkdir(args.output)
     except:
