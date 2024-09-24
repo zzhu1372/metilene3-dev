@@ -725,9 +725,13 @@ def DMRtable(args, finalCls, mout, unmout=None):
         dmrs_list.append(unmout)
 
     for dmrs in dmrs_list:
-        table = pd.DataFrame([dmrs['DMTree'].str.contains(('P'+i+',').replace('|','\|')).sum() for i in finalCls.columns[1:]], list(finalCls.columns[1:]))
-        table.columns = ['#DMRs_hypo_in_left']
-        table['#DMRs_hypo_in_right'] = [dmrs['DMTree'].str.contains(('N'+i+',').replace('|','\|')).sum() for i in table.index]
+        if args.groupinfo:
+            table = pd.DataFrame(mout['sig.comparison'].value_counts()[:10])
+            table.columns = ['#DMRs']
+        else:
+            table = pd.DataFrame([dmrs['DMTree'].str.contains(('P'+i+',').replace('|','\|')).sum() for i in finalCls.columns[1:]], list(finalCls.columns[1:]))
+            table.columns = ['#DMRs_hypo_in_left']
+            table['#DMRs_hypo_in_right'] = [dmrs['DMTree'].str.contains(('N'+i+',').replace('|','\|')).sum() for i in table.index]
         # print(table)
         
         def decodeSigCmp(x):
@@ -754,8 +758,13 @@ def DMRtable(args, finalCls, mout, unmout=None):
             else:
                 return {'L':upmlist['2'], 'R':upmlist['3']}
         
-        table['Left_Child'] = [','.join(decodeSigCmpLR(i)['L']) for i in table.index]
-        table['Right_Child'] = [','.join(decodeSigCmpLR(i)['R']) for i in table.index]
+        if args.groupinfo:
+            table['Hypo'] = [','.join(decodeSigCmp(i)[0]['1']) for i in table.index]
+            table['Int'] = [','.join(decodeSigCmp(i)[0]['2']) for i in table.index]
+            table['Hyper'] = [','.join(decodeSigCmp(i)[0]['3']) for i in table.index]
+        else:
+            table['Left_Child'] = [','.join(decodeSigCmpLR(i)['L']) for i in table.index]
+            table['Right_Child'] = [','.join(decodeSigCmpLR(i)['R']) for i in table.index]
         
         table.index = range(len(table.index))#[decodeSigCmp(i) for i in table.index]
         tables.append(table)
@@ -772,101 +781,144 @@ def gsea(args, finalCls, mout, unmout=None):
     if unmout is not None:
         dmrs_list.append(unmout)
 
-    uors = 'sup'
-    for dmrs in dmrs_list:
-        table = pd.DataFrame([dmrs['DMTree'].str.contains(('P'+i+',').replace('|','\|')).sum() for i in finalCls.columns[1:]], list(finalCls.columns[1:]))
-        table.columns = ['#DMRs_hypo_in_left']
-        table['#DMRs_hypo_in_right'] = [dmrs['DMTree'].str.contains(('N'+i+',').replace('|','\|')).sum() for i in table.index]
-        # print(table)
+    def decodeSigCmp(x):
+        upmlist = {'1':[], '2':[], '3':[], '0':[]}
+        x = x.split('|')
+        grp_dict = pd.read_table(args.output+'/group-ID.tsv',\
+                                index_col='Group_ID')
+        grp_dict = grp_dict['Group'].to_dict()
+        for i in range(len(x)):
+            upmlist[x[i]].append(grp_dict[i])
+        return [upmlist, 'Hypo:'+','.join(upmlist['1'])+' - vs - '+'Hyper:'+','.join(upmlist['3'])]
+    
+    def decodeSigCmpLR(x):
+        upmlist = {'1':[], '2':[], '3':[], '0':[]}
+        x = x.split('|')
+        grp_dict = pd.read_table(args.output+'/group-ID.tsv',\
+                                index_col='Group_ID')
+        grp_dict = grp_dict['Group'].to_dict()
+        for i in range(len(x)):
+            upmlist[x[i]].append(grp_dict[i])
         
-        def decodeSigCmp(x):
-            upmlist = {'1':[], '2':[], '3':[], '0':[]}
-            x = x.split('|')
-            grp_dict = pd.read_table(args.output+'/group-ID.tsv',\
-                                    index_col='Group_ID')
-            grp_dict = grp_dict['Group'].to_dict()
-            for i in range(len(x)):
-                upmlist[x[i]].append(grp_dict[i])
-            return [upmlist, 'Hypo:'+','.join(upmlist['1'])+' - vs - '+'Hyper:'+','.join(upmlist['3'])]
+        if len(upmlist['3'])==0:
+            return {'L':upmlist['1'], 'R':upmlist['2']}
+        else:
+            return {'L':upmlist['2'], 'R':upmlist['3']}
         
-        def decodeSigCmpLR(x):
-            upmlist = {'1':[], '2':[], '3':[], '0':[]}
-            x = x.split('|')
-            grp_dict = pd.read_table(args.output+'/group-ID.tsv',\
-                                    index_col='Group_ID')
-            grp_dict = grp_dict['Group'].to_dict()
-            for i in range(len(x)):
-                upmlist[x[i]].append(grp_dict[i])
-            
-            if len(upmlist['3'])==0:
-                return {'L':upmlist['1'], 'R':upmlist['2']}
-            else:
-                return {'L':upmlist['2'], 'R':upmlist['3']}
-        
-        table['Left_Child'] = [','.join(decodeSigCmpLR(i)['L']) for i in table.index]
-        table['Right_Child'] = [','.join(decodeSigCmpLR(i)['R']) for i in table.index]
+    if args.groupinfo:
+        table = pd.DataFrame(mout['sig.comparison'].value_counts()[:10])
+        table.columns = ['#DMRs']
+        table['Hypo'] = [','.join(decodeSigCmp(i)[0]['1']) for i in table.index]
+        table['Int'] = [','.join(decodeSigCmp(i)[0]['2']) for i in table.index]
+        table['Hyper'] = [','.join(decodeSigCmp(i)[0]['3']) for i in table.index]
 
         if args.genesets and args.annotation:
             import gseapy as gp
             j = 0
             for i in table.index:
                 gene_sets = args.genesets
-                gene_list = list(set(dmrs.loc[(dmrs['DMTree'].str.contains(('P'+i+',').replace('|','\|')))&(dmrs['meandiffabs']>args.minMethDiffHigh)]['SYMBOL'].dropna()))
+                gene_list = list(set(mout.loc[(mout['sig.comparison']==i)&(mout['meandiffabs']>args.minMethDiffHigh)]['SYMBOL'].dropna()))
                 
                 try:
                     enr = gp.enrichr(gene_list=gene_list,
                                 gene_sets=gene_sets,
                                 organism='human',
-                                outdir=args.output+'/GSEA/'+'P'+uors+i.replace('|','_'),
+                                outdir=args.output+'/GSEA/'+i.replace('|','_'),
                                 cutoff = 1,
                                 format = 'jpg',
                                 )
                 except:
-                    print("GSEA error:",gene_list)
+                    pass
+                    # print("GSEA error:",gene_list)
                             
-                fig_path = './GSEA/'+'P'+uors+i.replace('|','_')+\
+                fig_path = './GSEA/'+i.replace('|','_')+\
                             "/"+args.genesets.split('/')[-1]+".human.enrichr.reports.jpg"
                             
-                gseapopup += "<div id=\"popupgsea"+'P'+uors+str(j)+"\" class=\"popup\"><br>\
-                    <button onclick=\"hidePopup('popupgsea"+'P'+uors+str(j)+"')\">Close</button>\
-                        <p>GSEA for "+'P'+uors+i+"</p><img src="+fig_path+" height=\"200\"><br></div>\n"
+                gseapopup += "<div id=\"popupgsea"+str(j)+"\" class=\"popup\"><br>\
+                    <button onclick=\"hidePopup('popupgsea"+str(j)+"')\">Close</button>\
+                        <p>GSEA"+"</p><img src="+fig_path+" height=\"200\"><br></div>\n"
                 j+=1
                 
-            table['GSEA'] = ["<button onclick=\"showPopup('popupgsea"+'P'+uors+str(i)+\
-                            "')\">Click to show GSEA results</button>" \
-                            for i in range(table.shape[0])]
-            
-            j = 0
-            for i in table.index:
-                gene_sets = args.genesets
-                gene_list = list(set(dmrs.loc[(dmrs['DMTree'].str.contains(('N'+i+',').replace('|','\|')))&(dmrs['meandiffabs']>args.minMethDiffHigh)]['SYMBOL'].dropna()))
-                
-                try:
-                    enr = gp.enrichr(gene_list=gene_list,
-                                gene_sets=gene_sets,
-                                organism='human',
-                                outdir=args.output+'/GSEA/'+'N'+uors+i.replace('|','_'),
-                                cutoff = 1,
-                                format = 'jpg',
-                                )
-                except:
-                    print("GSEA error:",gene_list)
-                            
-                fig_path = './GSEA/'+'N'+uors+i.replace('|','_')+\
-                            "/"+args.genesets.split('/')[-1]+".human.enrichr.reports.jpg"
-                            
-                gseapopup += "<div id=\"popupgsea"+'N'+uors+str(j)+"\" class=\"popup\"><br>\
-                    <button onclick=\"hidePopup('popupgsea"+'N'+uors+str(j)+"')\">Close</button>\
-                        <p>GSEA for "+'N'+uors+i+"</p><img src="+fig_path+" height=\"200\"><br></div>\n"
-                j+=1
-                
-            table['GSEA_rev'] = ["<button onclick=\"showPopup('popupgsea"+'N'+uors+str(i)+\
+            table['GSEA'] = ["<button onclick=\"showPopup('popupgsea"+str(i)+\
                             "')\">Click to show GSEA results</button>" \
                             for i in range(table.shape[0])]
         
         table.index = range(len(table.index))#[decodeSigCmp(i) for i in table.index]
         tables.append(table)
-        uors = 'unsup'
+    else:
+        uors = 'sup'
+        for dmrs in dmrs_list:
+            table = pd.DataFrame([dmrs['DMTree'].str.contains(('P'+i+',').replace('|','\|')).sum() for i in finalCls.columns[1:]], list(finalCls.columns[1:]))
+            table.columns = ['#DMRs_hypo_in_left']
+            table['#DMRs_hypo_in_right'] = [dmrs['DMTree'].str.contains(('N'+i+',').replace('|','\|')).sum() for i in table.index]
+            # print(table)
+            
+            table['left'] = [','.join(decodeSigCmpLR(i)['L']) for i in table.index]
+            table['right'] = [','.join(decodeSigCmpLR(i)['R']) for i in table.index]
+
+            if args.genesets and args.annotation:
+                import gseapy as gp
+                j = 0
+                for i in table.index:
+                    gene_sets = args.genesets
+                    gene_list = list(set(dmrs.loc[(dmrs['DMTree'].str.contains(('P'+i+',').replace('|','\|')))&(dmrs['meandiffabs']>args.minMethDiffHigh)]['SYMBOL'].dropna()))
+                    
+                    try:
+                        enr = gp.enrichr(gene_list=gene_list,
+                                    gene_sets=gene_sets,
+                                    organism='human',
+                                    outdir=args.output+'/GSEA/'+'P'+uors+i.replace('|','_'),
+                                    cutoff = 1,
+                                    format = 'jpg',
+                                    )
+                    except:
+                        pass
+                        # print("GSEA error:",gene_list)
+                                
+                    fig_path = './GSEA/'+'P'+uors+i.replace('|','_')+\
+                                "/"+args.genesets.split('/')[-1]+".human.enrichr.reports.jpg"
+                                
+                    gseapopup += "<div id=\"popupgsea"+'P'+uors+str(j)+"\" class=\"popup\"><br>\
+                        <button onclick=\"hidePopup('popupgsea"+'P'+uors+str(j)+"')\">Close</button>\
+                            <p>GSEA for hypo in "+','.join(decodeSigCmpLR(i)['L'])+"</p><img src="+fig_path+" height=\"200\"><br></div>\n"
+                    j+=1
+                    
+                table['GSEA_hypo_in_left'] = ["<button onclick=\"showPopup('popupgsea"+'P'+uors+str(i)+\
+                                "')\">Click to show GSEA results</button>" \
+                                for i in range(table.shape[0])]
+                
+                j = 0
+                for i in table.index:
+                    gene_sets = args.genesets
+                    gene_list = list(set(dmrs.loc[(dmrs['DMTree'].str.contains(('N'+i+',').replace('|','\|')))&(dmrs['meandiffabs']>args.minMethDiffHigh)]['SYMBOL'].dropna()))
+                    
+                    try:
+                        enr = gp.enrichr(gene_list=gene_list,
+                                    gene_sets=gene_sets,
+                                    organism='human',
+                                    outdir=args.output+'/GSEA/'+'N'+uors+i.replace('|','_'),
+                                    cutoff = 1,
+                                    format = 'jpg',
+                                    )
+                    except:
+                        pass
+                        # print("GSEA error:",gene_list)
+                                
+                    fig_path = './GSEA/'+'N'+uors+i.replace('|','_')+\
+                                "/"+args.genesets.split('/')[-1]+".human.enrichr.reports.jpg"
+                                
+                    gseapopup += "<div id=\"popupgsea"+'N'+uors+str(j)+"\" class=\"popup\"><br>\
+                        <button onclick=\"hidePopup('popupgsea"+'N'+uors+str(j)+"')\">Close</button>\
+                            <p>GSEA for hypo in "+','.join(decodeSigCmpLR(i)['R'])+"</p><img src="+fig_path+" height=\"200\"><br></div>\n"
+                    j+=1
+                    
+                table['GSEA_hypo_in_right'] = ["<button onclick=\"showPopup('popupgsea"+'N'+uors+str(i)+\
+                                "')\">Click to show GSEA results</button>" \
+                                for i in range(table.shape[0])]
+            
+            table.index = range(len(table.index))#[decodeSigCmp(i) for i in table.index]
+            tables.append(table)
+            uors = 'unsup'
     
     return (gseapopup, tables)
 
@@ -923,7 +975,14 @@ def report_sup(args, start_time, end_time, mout):
     final_html = final_html.replace('<div>End time: XXX</div><br>', 'End time: '+str(end_time)+'</div><br>')
 
     final_html = final_html.replace('<div>Number of supervised DMRs: XXX</div><br>', 'Number of supervised DMRs: '+str(mout.shape[0])+'</div><br>')
-
+    finalCls = pd.read_table(args.groupinfo, index_col='ID')[['Group']]
+    if args.genesets and args.annotation:
+        gseapopup, tables = gsea(args, finalCls, mout)
+        final_html = final_html.replace('<div id="pandas_table_placeholder_dmr_sup"></div>', tables[0].to_html(escape=False))
+        final_html = final_html.replace('<div id="gsea_placeholder"></div>', gseapopup)
+    else:
+        tables = DMRtable(args, finalCls, mout)
+        final_html = final_html.replace('<div id="pandas_table_placeholder_dmr_sup"></div>', tables[0].to_html(escape=False))
     with open(args.output+'/report.html', 'w') as final_file:
         final_file.write(final_html)
 
@@ -932,15 +991,29 @@ def report_sup(args, start_time, end_time, mout):
 ###################################################################################################
 # main
 ###################################################################################################
+def checkParams(args):
+    msg = None
+    if not (args.input and args.output):
+        msg = 'ERROR: please provide both input filename and output folder.'
+    
+    if args.genesets and (not args.annotation):
+        msg = 'ERROR: please also provide annotation if you want to run GSEA.'
+        
+    if args.groupinfo and args.visualization:
+        msg = 'ERROR: visualization function is only for unsupervised mode.'
+         
+    return msg
+
 def main():
     start_time = time.ctime()
     
     args = parser.parse_args()
     # print(args)
-    # check IO:
-    if not (args.input and args.output):
-        print('ERROR: please provide both input filename and output folder.')
+    msg = checkParams(args)
+    if msg:
+        print(msg)
         return None
+
     
     # getMetilene()
     try:
