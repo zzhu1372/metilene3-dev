@@ -71,7 +71,7 @@ def preprocess(args, headerfile, ifsup, grpinfo=None):
         cols.to_csv(headerfile, sep='\t', index=False)
         
     else:
-        grp = pd.read_table(grpinfo, index_col='ID')['Group']
+        grp = pd.read_table(grpinfo, index_col='ID')['Group'].astype(str)
         grpid = {}
         j = 0
         for i in sorted(grp.unique()):
@@ -265,14 +265,14 @@ def processOutput(args, ifsup, anno='F'):
         return y
     
     if ifsup=='unsup':
-        sids = list(pd.read_table(args.input, nrows=0).columns[2:])
+        sids = [str(i) for i in pd.read_table(args.input, nrows=0).columns[2:]]
         mout['Hypo-samples'] = mout['sig.comparison'].apply(sigcom2hypo).apply(lambda x:','.join(sorted([str(sids[i]) for i in x])))
         mout['Int-samples'] = mout['sig.comparison'].apply(sigcom2inter).apply(lambda x:','.join(sorted([str(sids[i]) for i in x])))\
                                                                                                                             .apply(lambda x:x if x!='' else '-')
         mout['Hyper-samples'] = mout['sig.comparison'].apply(sigcom2hyper).apply(lambda x:','.join(sorted([str(sids[i]) for i in x])))
 
     else:
-        rename_cls = pd.read_table(args.output + '/group-ID.tsv', index_col='Group_ID')['Group'].to_dict()
+        rename_cls = pd.read_table(args.output + '/group-ID.tsv', index_col='Group_ID')['Group'].astype(str).to_dict()
 
         mout['Hypo-groups'] = mout['sig.comparison'].apply(sigcom2hypo).apply(lambda x:','.join(sorted([rename_cls[i] for i in x])))
         mout['Int-groups'] = mout['sig.comparison'].apply(sigcom2inter).apply(lambda x:','.join(sorted([rename_cls[i] for i in x])))\
@@ -688,7 +688,7 @@ def clustering(mout, args):
         return (None, None)
 
     reportPath = args.output+'/'
-    sids = list(pd.read_table(args.input, nrows=0).columns[2:])
+    sids = [str(i) for i in pd.read_table(args.input, nrows=0).columns[2:]]
     
     finalCls = pd.DataFrame([i.split('|') for i in cls[0]]).sum()
     finalCls.index = sids
@@ -739,7 +739,7 @@ def DMRtable(args, finalCls, mout, unmout=None):
             x = x.split('|')
             grp_dict = pd.read_table(args.output+'/group-ID.tsv',\
                                     index_col='Group_ID')
-            grp_dict = grp_dict['Group'].to_dict()
+            grp_dict = grp_dict['Group'].astype(str).to_dict()
             for i in range(len(x)):
                 upmlist[x[i]].append(grp_dict[i])
             return [upmlist, 'Hypo:'+','.join(upmlist['1'])+' - vs - '+'Hyper:'+','.join(upmlist['3'])]
@@ -749,7 +749,7 @@ def DMRtable(args, finalCls, mout, unmout=None):
             x = x.split('|')
             grp_dict = pd.read_table(args.output+'/group-ID.tsv',\
                                     index_col='Group_ID')
-            grp_dict = grp_dict['Group'].to_dict()
+            grp_dict = grp_dict['Group'].astype(str).to_dict()
             for i in range(len(x)):
                 upmlist[x[i]].append(grp_dict[i])
             
@@ -786,7 +786,7 @@ def gsea(args, finalCls, mout, unmout=None):
         x = x.split('|')
         grp_dict = pd.read_table(args.output+'/group-ID.tsv',\
                                 index_col='Group_ID')
-        grp_dict = grp_dict['Group'].to_dict()
+        grp_dict = grp_dict['Group'].astype(str).to_dict()
         for i in range(len(x)):
             upmlist[x[i]].append(grp_dict[i])
         return [upmlist, 'Hypo:'+','.join(upmlist['1'])+' - vs - '+'Hyper:'+','.join(upmlist['3'])]
@@ -796,7 +796,7 @@ def gsea(args, finalCls, mout, unmout=None):
         x = x.split('|')
         grp_dict = pd.read_table(args.output+'/group-ID.tsv',\
                                 index_col='Group_ID')
-        grp_dict = grp_dict['Group'].to_dict()
+        grp_dict = grp_dict['Group'].astype(str).to_dict()
         for i in range(len(x)):
             upmlist[x[i]].append(grp_dict[i])
         
@@ -976,6 +976,7 @@ def report_sup(args, start_time, end_time, mout):
 
     final_html = final_html.replace('<div>Number of supervised DMRs: XXX</div><br>', 'Number of supervised DMRs: '+str(mout.shape[0])+'</div><br>')
     finalCls = pd.read_table(args.groupinfo, index_col='ID')[['Group']]
+    finalCls['Group'] = finalCls['Group'].astype(str)
     if args.genesets and args.annotation:
         gseapopup, tables = gsea(args, finalCls, mout)
         final_html = final_html.replace('<div id="pandas_table_placeholder_dmr_sup"></div>', tables[0].to_html(escape=False))
@@ -1001,6 +1002,16 @@ def checkParams(args):
         
     if args.groupinfo and args.visualization:
         msg = 'ERROR: visualization function is only for unsupervised mode.'
+
+    try:
+        pd.read_table(grpinfo, index_col='ID')['Group'].astype(str)
+    except:
+        msg = 'ERROR: please check the format of the table of group information and provide a tab-separated tsv file.'
+
+    try:
+        pd.read_table(args.input, nrows=1)
+    except:
+        msg = 'ERROR: please check the format of the input matrix and provide a tab-separated tsv file.'
          
     return msg
 
