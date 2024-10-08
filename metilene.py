@@ -162,21 +162,21 @@ def chipseeker(mout, moutPath, anno):
         anno = 'TxDb.Hsapiens.UCSC.hg19.knownGene'
     if anno in ['hg38','HG38']:
         anno = 'TxDb.Hsapiens.UCSC.hg38.knownGene'
-    cmd = "require("+anno+");require(ChIPseeker);"+\
-    "peakfile=\'"+str(os.getcwd())+"/"+moutPath+".bed\';"+\
+    cmd = "require("+anno+");require(ChIPseeker);setwd(\'"+str(os.getcwd())+"\');"+\
+    "peakfile=\'"+moutPath+".bed\';"+\
     "txdb<-"+anno+";"+\
     "peakAnno <- annotatePeak(peakfile, tssRegion=c(-3000, 1000), TxDb=txdb, annoDb=\'org.Hs.eg.db\');"+\
-    "write.csv(as.GRanges(peakAnno), \'"+str(os.getcwd())+"/"+moutPath+".bed.csv\')"
+    "write.csv(as.GRanges(peakAnno), \'"+moutPath+".bed.csv\')"
     
     mout.sort_values(['chr','start','stop',])[['chr','start','stop']].to_csv(\
-    str(os.getcwd())+"/"+moutPath+".bed",sep='\t',index=False,header=None)
+    moutPath+".bed",sep='\t',index=False,header=None)
     
     os.system('Rscript -e \"'+cmd+'\"')
     
-    annoed = pd.read_csv(str(os.getcwd())+"/"+moutPath+".bed.csv", index_col=0)
+    annoed = pd.read_csv(moutPath+".bed.csv", index_col=0)
     
-    os.remove(str(os.getcwd())+"/"+moutPath+".bed")
-    os.remove(str(os.getcwd())+"/"+moutPath+".bed.csv")
+    os.remove(moutPath+".bed")
+    os.remove(moutPath+".bed.csv")
     
     annoed.index = annoed['seqnames']+':'+annoed['start'].astype(str)+'-'+annoed['end'].astype(str)
     annoed['anno'] = annoed['annotation'].apply(lambda x:x.split(' (')[0])
@@ -1003,10 +1003,11 @@ def checkParams(args):
     if args.groupinfo and args.visualization:
         msg = 'ERROR: visualization function is only for unsupervised mode.'
 
-    try:
-        pd.read_table(grpinfo, index_col='ID')['Group'].astype(str)
-    except:
-        msg = 'ERROR: please check the format of the table of group information and provide a tab-separated tsv file.'
+    if args.groupinfo:
+        try:
+            pd.read_table(grpinfo, index_col='ID')['Group'].astype(str)
+        except:
+            msg = 'ERROR: please check the format of the table of group information and provide a tab-separated tsv file.'
 
     try:
         pd.read_table(args.input, nrows=1)
