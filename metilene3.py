@@ -928,7 +928,7 @@ def gsea(args, finalCls, mout, unmout=None):
 # HTML report
 ###################################################################################################
 def report(args, start_time, end_time, unmout, finalCls, mout):
-    with open(os.path.realpath(__file__)[:-len('metilene.py')]+'template_unsup.html', 'r') as template_file:
+    with open(os.path.realpath(__file__).replace('metilene3.py','')+'template_unsup.html', 'r') as template_file:
         template_content = template_file.read()
 
     final_html = template_content.replace('<h2>Metilene Report for XXX</h2>', '<h2>Metilene Report for '+args.input.split('/')[-1]+'</h2>')
@@ -964,7 +964,7 @@ def report(args, start_time, end_time, unmout, finalCls, mout):
 
 
 def report_sup(args, start_time, end_time, mout):
-    with open(os.path.realpath(__file__)[:-len('metilene.py')]+'template_sup.html', 'r') as template_file:
+    with open(os.path.realpath(__file__).replace('metilene3.py','')+'template_sup.html', 'r') as template_file:
         template_content = template_file.read()
 
     final_html = template_content.replace('<h2>Metilene Report for XXX</h2>', '<h2>Metilene Report for '+args.input.split('/')[-1]+'</h2>')
