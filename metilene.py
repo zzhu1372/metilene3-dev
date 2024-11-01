@@ -50,7 +50,7 @@ parser.add_argument('-n0', "--minN0", type=int, default=2, help=argparse.SUPPRES
 # Install
 ###################################################################################################
 def getMetilene():
-    os.system("cd "+os.path.realpath(__file__)[:-len('metilene.py')]+";make")
+    os.system("cd "+os.path.realpath(__file__).replace('metilene3.py','')+";make")
 
 
 
@@ -98,7 +98,7 @@ def runMetilene(args, headerfile, ifsup):
         return None
     # print(os.path.realpath(__file__))
     if ifsup=='unsup':
-        os.system(os.path.realpath(__file__)[:-3]+\
+        os.system(os.path.realpath(__file__).replace('metilene3.py','metilene')+\
                     " -t "+str(args.threads)+\
                     " -s "+str(args.seed)+\
                     " -p "+str(args.verbose*1)+\
@@ -118,7 +118,7 @@ def runMetilene(args, headerfile, ifsup):
                     args.output+'/DMRs-unsupervised.tsv' )
 
     else:
-        os.system(os.path.realpath(__file__)[:-3]+\
+        os.system(os.path.realpath(__file__).replace('metilene3.py','metilene')+\
                     " -t "+str(args.threads)+\
                     " -s "+str(args.seed)+\
                     " -p "+str(args.verbose*1)+\
@@ -1026,8 +1026,8 @@ def main():
         print(msg)
         return None
 
-    
-    # getMetilene()
+    if not os.path.isfile(os.path.realpath(__file__).replace('metilene3.py','metilene')):
+        getMetilene()
     try:
         os.mkdir(args.output)
     except:
