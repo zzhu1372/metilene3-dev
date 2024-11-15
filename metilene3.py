@@ -1005,7 +1005,7 @@ def checkParams(args):
 
     if args.groupinfo:
         try:
-            pd.read_table(grpinfo, index_col='ID')['Group'].astype(str)
+            pd.read_table(args.groupinfo, index_col='ID')['Group'].astype(str)
         except:
             msg = 'ERROR: please check the format of the table of group information and provide a tab-separated tsv file.'
 
