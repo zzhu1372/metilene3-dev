@@ -1092,13 +1092,13 @@ def main():
             print('ERROR: No cluster found. Please check the data or use smaller meandiff for clustering.')
             return None
 
+        unmout = addDMTree2DMR(args, 'unsup', cls, finalCls)
+        
         if args.withSupervised==False:
             end_time = time.ctime()
             report_unsup(args, start_time, end_time, unmout, finalCls.drop(columns=cls[0]))
             print(end_time,": Finished.")
             return None
-        
-        unmout = addDMTree2DMR(args, 'unsup', cls, finalCls)
 
         print(time.ctime(),": Running supervised mode...")
 
