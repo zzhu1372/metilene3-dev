@@ -849,7 +849,7 @@ def gsea(args, finalCls, mout, unmout=None):
     else:
         uors = 'sup'
         for dmrs in dmrs_list:
-            if dmrs:
+            if dmrs is not None:
                 table = pd.DataFrame([dmrs['DMTree'].str.contains(('P'+i+',').replace('|','\|')).sum() for i in finalCls.columns[1:]], list(finalCls.columns[1:]))
                 table.columns = ['#DMRs_hypo_in_left']
                 table['#DMRs_hypo_in_right'] = [dmrs['DMTree'].str.contains(('N'+i+',').replace('|','\|')).sum() for i in table.index]
