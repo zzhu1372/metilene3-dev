@@ -1096,6 +1096,9 @@ def main():
         
         if args.withSupervised==False:
             end_time = time.ctime()
+            headerfile = args.output+'/'+args.input.split('/')[-1]+'.header'
+            preprocess(args, headerfile, 'sup', \
+                       args.output+'/clusters.tsv')
             report_unsup(args, start_time, end_time, unmout, finalCls.drop(columns=cls[0]))
             print(end_time,": Finished.")
             return None
