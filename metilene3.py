@@ -933,7 +933,7 @@ def gsea(args, finalCls, mout, unmout=None):
 ###################################################################################################
 # HTML report
 ###################################################################################################
-def report(args, start_time, end_time, unmout, finalCls, mout):
+def report_unsup(args, start_time, end_time, unmout, finalCls, mout):
     with open(os.path.realpath(__file__).replace('metilene3.py','')+'template_unsup.html', 'r') as template_file:
         template_content = template_file.read()
 
@@ -993,8 +993,8 @@ def report_sup(args, start_time, end_time, mout):
     with open(args.output+'/report.html', 'w') as final_file:
         final_file.write(final_html)
 
-def report_unsup(args, start_time, end_time, unmout, finalCls):
-    with open(os.path.realpath(__file__).replace('metilene3.py','')+'template_unsup.html', 'r') as template_file:
+def report_wosup(args, start_time, end_time, unmout, finalCls):
+    with open(os.path.realpath(__file__).replace('metilene3.py','')+'template_wosup.html', 'r') as template_file:
         template_content = template_file.read()
 
     final_html = template_content.replace('<h2>Metilene Report for XXX</h2>', '<h2>Metilene Report for '+args.input.split('/')[-1]+'</h2>')
@@ -1018,8 +1018,8 @@ def report_unsup(args, start_time, end_time, unmout, finalCls):
         final_html = final_html.replace('<div id="pandas_table_placeholder_dmr_unsup"></div>', tables[1].to_html(escape=False))
         final_html = final_html.replace('<div id="gsea_placeholder"></div>', gseapopup)
     if not args.genesets:
-        tables = DMRtable(args, finalCls, mout, unmout)
-        final_html = final_html.replace('<div id="pandas_table_placeholder_dmr_unsup"></div>', tables[1].to_html(escape=False))
+        tables = DMRtable(args, finalCls, unmout)
+        final_html = final_html.replace('<div id="pandas_table_placeholder_dmr_unsup"></div>', tables[0].to_html(escape=False))
 
     with open(args.output+'/report.html', 'w') as final_file:
         final_file.write(final_html)
@@ -1099,7 +1099,7 @@ def main():
             headerfile = args.output+'/'+args.input.split('/')[-1]+'.header'
             preprocess(args, headerfile, 'sup', \
                        args.output+'/clusters.tsv')
-            report_unsup(args, start_time, end_time, unmout, finalCls.drop(columns=cls[0]))
+            report_wosup(args, start_time, end_time, unmout, finalCls.drop(columns=cls[0]))
             print(end_time,": Finished.")
             return None
 
@@ -1113,7 +1113,7 @@ def main():
         mout = addDMTree2DMR(args, 'sup', cls, finalCls)
 
         end_time = time.ctime()
-        report(args, start_time, end_time, unmout, finalCls.drop(columns=cls[0]), mout)
+        report_unsup(args, start_time, end_time, unmout, finalCls.drop(columns=cls[0]), mout)
         print(end_time,": Finished.")
 
     if not args.keeptmp:
