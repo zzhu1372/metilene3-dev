@@ -206,7 +206,8 @@ def processOutput(args, ifsup, anno='F'):
     else:
         moutPath = args.output + '/DMRs.tsv'
     mout = pd.read_table(moutPath)
-
+    
+    mout = mout.loc[mout['sig.comparison']!='TBC']
     # if args.skipMetilene:
     #     return mout
     
