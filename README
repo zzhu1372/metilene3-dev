@@ -1,50 +1,35 @@
-README file for metilene
 
 
-INSTALL
-==============
-1. Get Python3 packages
-pip install pandas matplotlib biopython gseapy seaborn numpy scikit-learn
-or
-pip3 install pandas matplotlib biopython gseapy seaborn numpy scikit-learn
+1. System requirements
+Linux or macOS.
+GNU Make.
+Python (version==3.x, tested on 3.10.4) and Python package: pandas (tested on 2.0.3).
 
-2. Get R packages
-Run the following in R:
-'''
-if (!require("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
-BiocManager::install("ChIPseeker")
-BiocManager::install("org.Hs.eg.db")
-'''
-
-Tips:
-   93  sudo apt install libssl-dev
-   94  sudo apt install libxml2-dev
-   96  sudo apt install libfontconfig1-dev
-   98  sudo apt install libcurl4-openssl-dev
-
-# update indices
-sudo apt update -qq
-# install two helper packages we need
-sudo apt install --no-install-recommends software-properties-common dirmngr
-# add the signing key (by Michael Rutter) for these repos
-# To verify key, run gpg --show-keys /etc/apt/trusted.gpg.d/cran_ubuntu_key.asc 
-# Fingerprint: E298A3A825C0D65DFD57CBB651716619E084DAB9
-wget -qO- https://cloud.r-project.org/bin/linux/ubuntu/marutter_pubkey.asc | sudo tee -a /etc/apt/trusted.gpg.d/cran_ubuntu_key.asc
-# add the R 4.0 repo from CRAN -- adjust 'focal' to 'groovy' or 'bionic' as needed
-sudo add-apt-repository "deb https://cloud.r-project.org/bin/linux/ubuntu $(lsb_release -cs)-cran40/"
-
-  153  sudo apt update
-  154  sudo apt install --no-install-recommends r-base
-  155  sudo apt install --no-install-recommends r-base-dev
+Optional:
+R packages: ChIPseeker and annotation package for TxDb object (e.g., hg19, hg38, or mm10)
+Python packages: numpy, scikit-learn, matplotlib, seaborn, biopython, gseapy
 
 
+2. Installation
+```
+git clone https://github.com/zzhu1372/metilene-dev.git
+cd ./metilene-dev
+make
+```
+It should take less than one minute on your laptop.
 
 
-3. Compile
-cd /path_to_metilene;make
+3. Instructions
+```
+python ./metilene3/metilene3.py -i ./metilene3/demo_input.tsv -o output_folder -w 0')
+```
+You should get a folder with:
+a. DMRs-unsupervised.tsv
+b. DMRs.tsv
+c. clusters.tsv
+d. group-ID.tsv
+e. report.html
 
+It should take less than one minute on your laptop.
 
-RUN METILENE
-==============
-python3 /path_to_metilene/metilene.py -i {input} -o ./{output_dir}
+Run with your data: replace `./metilene3/demo_input.tsv` with the path to your data.
