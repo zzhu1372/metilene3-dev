@@ -1025,6 +1025,38 @@ def report_wosup(args, start_time, end_time, unmout, finalCls):
     with open(args.output+'/report.html', 'w') as final_file:
         final_file.write(final_html)
 
+def report_nocls(args, start_time, end_time, unmout):
+    with open(os.path.realpath(__file__).replace('metilene3.py','')+'template_wosup.html', 'r') as template_file:
+        template_content = template_file.read()
+
+    final_html = template_content.replace('<h2>Metilene Report for XXX</h2>', '<h2>Metilene Report for '+args.input.split('/')[-1]+'</h2>')
+    final_html = final_html.replace('<div>Version: XXX</div><br>', '<div>Version: '+str(metilene_ver)+'</div><br>')
+    final_html = final_html.replace('<div>Command: XXX</div><br>', '<div>Command: '+''.join([i+' ' for i in sys.argv])+'</div><br>')
+    final_html = final_html.replace('<div>Parameters: XXX</div><br>', '<div>Parameters: <br>'+str(args).split('Namespace')[-1][1:-1].split(', skipMetilene')[0]+'</div><br>')
+    final_html = final_html.replace('<div>Start time: XXX</div><br>', '<div>Start time: '+str(start_time)+'</div>')
+    final_html = final_html.replace('<div>End time: XXX</div><br>', 'End time: '+str(end_time)+'</div><br>')
+
+    final_html = final_html.replace('<div>Number of unsupervised DMRs: XXX</div><br>', 'Number of unsupervised DMRs: '+str(unmout.shape[0])+'</div><br>')
+    
+    final_html = final_html.replace('<div>Number of clusters: XXX</div><br>', 'No clusters found. </div><br>')
+    final_html = final_html.replace('<div id="pandas_table_placeholder_cluster"></div>', '')
+
+    final_html = final_html.replace('<button onclick="showPopup(\'popupTree\')">Click to show the figures</button>', '')
+
+    finalCls = pd.read_table(args.input, nrows=0).T[2:]
+    finalCls['Group'] = finalCls.index
+    finalCls['Group'] = finalCls['Group'].astype(str)
+    if args.genesets and args.annotation:
+        gseapopup, tables = gsea(args, finalCls, unmout)
+        final_html = final_html.replace('<div id="pandas_table_placeholder_dmr_unsup"></div>', tables[1].to_html(escape=False))
+        final_html = final_html.replace('<div id="gsea_placeholder"></div>', gseapopup)
+    if not args.genesets:
+        tables = DMRtable(args, finalCls, unmout)
+        final_html = final_html.replace('<div id="pandas_table_placeholder_dmr_unsup"></div>', tables[0].to_html(escape=False))
+
+    with open(args.output+'/report.html', 'w') as final_file:
+        final_file.write(final_html)
+
 ###################################################################################################
 # main
 ###################################################################################################
@@ -1090,7 +1122,17 @@ def main():
         
         finalCls, cls = clustering(unmout, args)
         if finalCls is None:
-            print('ERROR: No cluster found. Please check the data or use smaller meandiff for clustering.')
+            print('Warning: No cluster found. Please check the data or use smaller meandiff for clustering.')
+            end_time = time.ctime()
+            headerfile = args.output+'/'+args.input.split('/')[-1]+'.header'
+            finalCls = pd.read_table(args.input, nrows=0).T[2:]
+            finalCls['Group'] = finalCls.index
+            finalCls['Group_ID'] = range(len(finalCls.index))
+            finalCls.to_csv(args.output+'/group-ID.tsv', sep='\t', index=False)
+            args.groupinfo = 1
+            report_nocls(args, start_time, end_time, unmout)
+            os.system("rm "+args.output+"/group-ID.tsv")
+            print(end_time,": Finished.")
             return None
 
         unmout = addDMTree2DMR(args, 'unsup', cls, finalCls)
