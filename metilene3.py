@@ -1016,7 +1016,7 @@ def report_wosup(args, start_time, end_time, unmout, finalCls):
 
     if args.genesets and args.annotation:
         gseapopup, tables = gsea(args, finalCls, None, unmout)
-        final_html = final_html.replace('<div id="pandas_table_placeholder_dmr_unsup"></div>', tables[1].to_html(escape=False))
+        final_html = final_html.replace('<div id="pandas_table_placeholder_dmr_unsup"></div>', tables[0].to_html(escape=False))
         final_html = final_html.replace('<div id="gsea_placeholder"></div>', gseapopup)
     if not args.genesets:
         tables = DMRtable(args, finalCls, unmout)
@@ -1048,7 +1048,7 @@ def report_nocls(args, start_time, end_time, unmout):
     finalCls['Group'] = finalCls['Group'].astype(str)
     if args.genesets and args.annotation:
         gseapopup, tables = gsea(args, finalCls, unmout)
-        final_html = final_html.replace('<div id="pandas_table_placeholder_dmr_unsup"></div>', tables[1].to_html(escape=False))
+        final_html = final_html.replace('<div id="pandas_table_placeholder_dmr_unsup"></div>', tables[0].to_html(escape=False))
         final_html = final_html.replace('<div id="gsea_placeholder"></div>', gseapopup)
     if not args.genesets:
         tables = DMRtable(args, finalCls, unmout)
