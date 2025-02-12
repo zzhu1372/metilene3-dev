@@ -1042,6 +1042,7 @@ def report_nocls(args, start_time, end_time, unmout):
     final_html = final_html.replace('<div id="pandas_table_placeholder_cluster"></div>', '')
 
     final_html = final_html.replace('<button onclick="showPopup(\'popupTree\')">Click to show the figures</button>', '')
+    final_html = final_html.replace('<button onclick="showPopup(\'popupCluster\')">Click to show the Table of clusters</button>', '')
 
     finalCls = pd.read_table(args.input, nrows=0).T[2:]
     finalCls['Group'] = finalCls.index
