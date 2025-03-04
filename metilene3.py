@@ -210,6 +210,9 @@ def processOutput(args, ifsup, anno='F'):
     mout = mout.loc[mout['sig.comparison']!='TBC']
     # if args.skipMetilene:
     #     return mout
+    if mout.shape[0]<1:
+        print("No DMR found!")
+        return None
     
     mout['meandiffabs'] = mout['meandiff'].apply(abs)
 
@@ -1110,6 +1113,9 @@ def main():
         runMetilene(args, headerfile, 'sup')
         mout = processOutput(args, 'sup', anno='T')
         end_time = time.ctime()
+        if mout is None:
+            print(end_time,": Finished.")
+            return
         report_sup(args, start_time, end_time, mout)
         print(end_time,": Finished.")
     else:
@@ -1118,7 +1124,10 @@ def main():
         preprocess(args, headerfile, 'unsup')
         runMetilene(args, headerfile, 'unsup')
         unmout = processOutput(args, 'unsup', anno='T')
-
+        if unmout is None:
+            end_time = time.ctime()
+            print(end_time,": Finished.")
+            return
         print(time.ctime(),": Clustering...")
         
         finalCls, cls = clustering(unmout, args)
@@ -1154,6 +1163,10 @@ def main():
                    args.output+'/clusters.tsv')
         runMetilene(args, headerfile, 'sup')
         mout = processOutput(args, 'sup', anno='T')
+        if mout is None:
+            end_time = time.ctime()
+            print(end_time,": Finished.")
+            return
         mout = addDMTree2DMR(args, 'sup', cls, finalCls)
 
         end_time = time.ctime()
