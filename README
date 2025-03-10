@@ -34,6 +34,7 @@ It should take less than one minute on your laptop.
 
 Run with your data: replace `./metilene3/demo_input.tsv` with the path to your data.
 
+
 4. Parameters
 | parameter | unit  | default | description
 |:--------|:-------------------------------|:---|:------------------------------|
@@ -60,3 +61,27 @@ Run with your data: replace `./metilene3/demo_input.tsv` with the path to your d
 | -wsup, \--withSupervised | bool | True | _(optional)_ run supervised mode after clustering
 
 
+5. Data format
+
+## Input:
+
+### CpG methylation matrix: ```methylation.mat```
+The first column should be the chromosome ID and the second column should be the position of the CpG. The following columns should be samples. Format: **tab-separated**, value range: **0-1**, missing values representated by **.** , and genomic position **sorted**. <br> If you have ```BED``` files and don't know how to generate this matrix, click [Example](./example).
+
+| chr | pos | sample_1 | sample_2 | sample_3 | ... |
+|:-----|:-----|:-----|:-----|:-----|:-----|
+| chr1 | 100 | 0.1 | 0.2 | . | ... |
+| chr1 | 200 | 0.1 | 0.5 | 0.3 | ... |
+| chr2 | 100 | 1 | . | 0 | ... |
+| ... | ... | ... | ... | ... | ... |
+
+
+### Group information table: ```samples_groups.tsv```
+This table should have two columns: **ID** and **Group**. The sample IDs in this table should be exactly matched to the sample IDs in ```methylation.mat```. Format: **tab-separated**.
+
+| ID | Group | 
+|:-----|:-----|
+| sample_1 | Group_A | 
+| sample_2 | Group_B1 | 
+| sample_3 | Group_B2 | 
+| ... | ... | 
