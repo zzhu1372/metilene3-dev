@@ -12,8 +12,8 @@ Python packages: numpy, scikit-learn, matplotlib, seaborn, biopython, gseapy
 
 2. Installation
 ```
-git clone https://github.com/zzhu1372/metilene-dev.git
-cd ./metilene-dev
+git clone https://github.com/zzhu1372/metilene3.git
+cd ./metilene3
 make
 ```
 It should take less than one minute on your laptop.
