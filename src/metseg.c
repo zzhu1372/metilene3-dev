@@ -2947,6 +2947,8 @@ int main(int argc, char** argv) {
   initProgramParams(&nfo);
   int verbose = 0;
 
+  int numnonnan = 0;
+
    //we want to detach the threads to automatically have their resources freed
   pthread_attr_init(&tattr); 
   pthread_attr_setdetachstate(&tattr,PTHREAD_CREATE_DETACHED);
@@ -3213,7 +3215,6 @@ int main(int argc, char** argv) {
 //check missing numbers            
             double *values = ALLOCMEMORY(NULL, NULL, double, csv[0]->noofstrings);
             int nan = checkSetNAN(csv, values);
-	    int numnonnan = 0;
             if(nan>0) {
           //      fprintf(stderr,"call fillNAN");
                 nan = fillNAN(values, subgroupID, subgroupSize, nfo.groups, &nfo);
@@ -3378,7 +3379,6 @@ int main(int argc, char** argv) {
 //add missing values          
           double *values = ALLOCMEMORY(NULL, NULL, double, csv[0]->noofstrings);
             int nan = checkSetNAN(csv, values);
-	    int numnonnan = 0;
             if(nan>0) {
   //              fprintf(stdout,"call fillNAN");
                 nan = fillNAN(values, subgroupID, subgroupSize, nfo.groups, &nfo);
@@ -3691,7 +3691,6 @@ int main(int argc, char** argv) {
 //check missing numbers            
         double *values = ALLOCMEMORY(NULL, NULL, double, csv[0]->noofstrings);
         int nan = checkSetNAN(csv, values);
-	int numnonnan = 0;
         if(nan>0) {
         // fprintf(stderr,"#call fillNAN for %d groups\n", nfo.groups);
             nan = fillNAN(values, subgroupID, subgroupSize, nfo.groups, &nfo);
