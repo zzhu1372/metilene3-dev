@@ -3213,12 +3213,16 @@ int main(int argc, char** argv) {
 //check missing numbers            
             double *values = ALLOCMEMORY(NULL, NULL, double, csv[0]->noofstrings);
             int nan = checkSetNAN(csv, values);
+	    int numnonnan = 0;
             if(nan>0) {
           //      fprintf(stderr,"call fillNAN");
                 nan = fillNAN(values, subgroupID, subgroupSize, nfo.groups, &nfo);
          //       fprintf(stderr,"...done\n");
                 
-            }
+            } 
+	    else {
+		numnonnan++;
+	    }
             if(nan>0) {
                 destructStringset(NULL, csv[0]);
                 csv[0] = NULL;
@@ -3374,10 +3378,14 @@ int main(int argc, char** argv) {
 //add missing values          
           double *values = ALLOCMEMORY(NULL, NULL, double, csv[0]->noofstrings);
             int nan = checkSetNAN(csv, values);
+	    int numnonnan = 0;
             if(nan>0) {
   //              fprintf(stdout,"call fillNAN");
                 nan = fillNAN(values, subgroupID, subgroupSize, nfo.groups, &nfo);
             }
+	    else {
+		numnonnan++;
+	    }
             if(nan>0) {
                 destructStringset(NULL, csv[0]);
                 csv[0] = NULL;
@@ -3683,11 +3691,15 @@ int main(int argc, char** argv) {
 //check missing numbers            
         double *values = ALLOCMEMORY(NULL, NULL, double, csv[0]->noofstrings);
         int nan = checkSetNAN(csv, values);
+	int numnonnan = 0;
         if(nan>0) {
         // fprintf(stderr,"#call fillNAN for %d groups\n", nfo.groups);
             nan = fillNAN(values, subgroupID, subgroupSize, nfo.groups, &nfo);
     //      fprintf(stderr,"#...done\n");
         }
+	else{
+	    numnonnan++;
+	}
      //   fprintf(stdout,"#LINES INPUT\n");
         if(nan>0) {
      //       fprintf(stdout,"#REMOVING LINE\n");
@@ -3844,6 +3856,7 @@ int main(int argc, char** argv) {
     multiple_testing_correction(nfo.outputList, nfo.mode, nfo.mtc);
     // if(nfo.outputList->i>=2){fprintf(stderr,"start92:%d\n",nfo.outputList->segment_out[2].start);}
     if(verbose){fprintf(stderr, "Multiple testing correction done.\n");}
+    fprintf(stderr, "Number of non-NA CpGs: %d\n", numnonnan);
     // fprintf(stdout, "chr\tstart\tstop\tq\tmeandiff\tlength\tmwu\tp\t%s\tsig.comparison\n",subgroupNames);
     fprintf(stdout, "chr\tstart\tstop\tq\tmeandiff\tlength\tmwu\tp\tmean\tsig.comparison\n",subgroupNames);
     for(int i=0;i<nfo.outputList->i;i++){
