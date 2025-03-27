@@ -285,10 +285,16 @@ def processOutput(args, ifsup, anno='F'):
 
     # print('# of processed DMRs:',mout.shape[0])
     if anno == 'T' and args.annotation:
-        mout = chipseeker(mout, moutPath, args.annotation)
+        try:
+            mout = chipseeker(mout, moutPath, args.annotation)
+        except:
+            print('ERROR: Failed to annotate DMRs. Please check if you have installed R packages: ChIPseeker and annotation package for TxDb object (e.g., hg19, hg38, or mm10).')
 
     if anno == 'T' and args.refSeq:
-        mout = addSeq(mout, args.refSeq)
+        try:
+            mout = addSeq(mout, args.refSeq)
+        except:
+            print('ERROR: Failed to annotate DMRs with the reference.')
 
     mout.to_csv(moutPath, index=False, sep='\t')
                     
