@@ -304,15 +304,35 @@ get_meandiff(cpg_t *cpg,double *a, int m, double *b, int n) {
   double mean1, mean2, meandiff;
   mean1=0;
   mean2=0;
+  int mna = 0;
+  int nna = 0;
   for(i=0; i<m; i++) {
-    mean1+=a[i];
+    if (a[i]==a[i])
+    {
+      mean1+=a[i];
+    }
+    else{
+      mna++;
+    }
   }
-  mean1/=(double) m;
-  for(i=0; i<n; i++) {
-    mean2+=b[i];
+  mean1/=(double) (m-mna);
+  for(i=0; i<n; i++) {   
+    if (b[i]==b[i])
+    {
+      mean2+=b[i];
+    }
+    else{
+      nna++;
+    }
   }
-  mean2/=(double) n;
-  meandiff=mean1-mean2;
+  mean2/=(double) (n-nna);
+  if (n==nna || m==mna)
+  {
+    meandiff=NAN;
+  }
+  else{
+    meandiff=mean1-mean2;
+  }
 //  fprintf(stdout,"meandiff %f\n",meandiff);
   cpg->methA=mean1;
   cpg->methB=mean2;
@@ -354,6 +374,11 @@ double
 counter(double x, double y, double *x0, double *x1, int m, 
     double *y0, double *y1, int n) {
 
+  if (x!=x || y!=y)
+  {
+    return 0;
+  }
+
   double **c, **l;
   int i;
 
@@ -368,10 +393,10 @@ counter(double x, double y, double *x0, double *x1, int m,
   memset(c[1], 0, sizeof(double)*4);
   memset(l[0], 0, sizeof(double)*5);
   memset(l[1], 0, sizeof(double)*5);
-
-
+  
   for(i=0; i < m; i++) {
     //central point
+    if(x0[i] != x0[i] || x1[i] != x1[i]) {continue;}  
     if(x0[i] == x && x1[i] == y) {l[0][0]++; continue;}  
     //   if(lx[i] == x || ly[i] == y) {continue;}  
     //points on borders of quadrants
@@ -396,6 +421,7 @@ counter(double x, double y, double *x0, double *x1, int m,
 
   for(i=0; i < n; i++) {
     //central point
+    if(y0[i] != y0[i] || y1[i] != y1[i]) {continue;}  
     if(y0[i] == x && y1[i] == y) {l[1][0]++; continue;}  
     //  if(lx[i] == x || ly[i] == y) {continue;}  
     //points on borders of quadrants
@@ -493,10 +519,12 @@ void kstest(segment_t *seg , int a, int b, char mindiff, char mincpgs, char test
   int l = b-a+1;
   double **la;
   double **lb;
-  double *x;
-  double *y;
+  // double *x;
+  // double *y;
   double mean1=0;
   double mean2=0;
+  int nonna1=0;
+  int nonna2=0;
   double meandiff = 0;
   double dl1=noA;
   double dl2=noB;
@@ -525,8 +553,8 @@ void kstest(segment_t *seg , int a, int b, char mindiff, char mincpgs, char test
   memset(lb[0], 0, sizeof(double)*l*noB);
   memset(lb[1], 0, sizeof(double)*l*noB);
 
-  x = ALLOCMEMORY(NULL, NULL, double, l);
-  y = ALLOCMEMORY(NULL, NULL, double, l);
+  // x = ALLOCMEMORY(NULL, NULL, double, l);
+  // y = ALLOCMEMORY(NULL, NULL, double, l);
 
   ks[0]=0;ks[1]=0;ks[2]=0;
 
@@ -534,28 +562,37 @@ void kstest(segment_t *seg , int a, int b, char mindiff, char mincpgs, char test
     for(j=0; j < noA; j++) {
       la[0][((i-a)*noA)+j]=seg->value[i][grpA[j]];
       la[1][((i-a)*noA)+j]=seg->pos[i];
-      mean1+=seg->value[i][grpA[j]];
-      x[i-a] += seg->value[i][grpA[j]];
+      if (seg->value[i][grpA[j]]==seg->value[i][grpA[j]])
+      {
+        mean1+=seg->value[i][grpA[j]];
+        nonna1++;
+      }
+      // x[i-a] += seg->value[i][grpA[j]];
     }
-    x[i-a]/=dl1;
+    // x[i-a]/=dl1;
   }
   for(i=a; i<=b; i++) {
     for(j=0;j<noB;j++) {
       lb[0][((i-a)*noB)+j]=seg->value[i][grpB[j]];
       lb[1][((i-a)*noB)+j]=seg->pos[i];
-      mean2+=seg->value[i][grpB[j]];
-      y[i-a] += seg->value[i][grpB[j]];
+      if (seg->value[i][grpB[j]]==seg->value[i][grpB[j]])
+      {
+        mean2+=seg->value[i][grpB[j]];
+        nonna2++;
+      }
+      // y[i-a] += seg->value[i][grpB[j]];
     }
-    y[i-a]/=dl2;
+    // y[i-a]/=dl2;
   }
   int u = mannwhitney( la[0], l*noA , lb[0], l*noB);
   p = mannwhitneyPvalue(u, l*noA, l*noB, nfo->MWU, MAXM, MAXN);
  // fprintf(stdout,"pVALUE %f\n",p);
   
 
-  mean1/=dl1*dl;
-  mean2/=dl2*dl;
+  mean1/=nonna1;
+  mean2/=nonna2;
   meandiff = mean1-mean2;
+  // fprintf(stderr,"meandiff ks,%f,%f,%f",mean1,mean2,meandiff);
   seg->methA=-1.0;
   seg->methB=-1.0;
   
@@ -571,8 +608,8 @@ void kstest(segment_t *seg , int a, int b, char mindiff, char mincpgs, char test
   FREEMEMORY(NULL, lb[1]);
   FREEMEMORY(NULL, la);
   FREEMEMORY(NULL, lb);
-  FREEMEMORY(NULL, x);
-  FREEMEMORY(NULL, y);
+  // FREEMEMORY(NULL, x);
+  // FREEMEMORY(NULL, y);
 
 }
 
@@ -642,8 +679,11 @@ void means(segment_t *seg , int a, int b, int ***groupID, int **groupSize, int g
     float mean=0;
     for(i=a; i<=b ; i++) {
       for(j=0; j < noA; j++) {
-        mean+=seg->value[i][grpA[j]];
-        dl+=1;
+        if (seg->value[i][grpA[j]]==seg->value[i][grpA[j]])
+        {
+          mean+=seg->value[i][grpA[j]];
+          dl+=1;
+        }
       }
     }
   
@@ -705,83 +745,122 @@ calcSingleDiffSum(segment_t *s, int ***groupID, int **groupSize, int groupNumber
   {
     int *grpA = groupID[0][groupCombination];
     int noA = groupSize[0][groupCombination];
+     
     int *grpB = groupID[1][groupCombination];
     int noB = groupSize[1][groupCombination];
+
+    int naA[s->n];
+    int naB[s->n];
+    for (int i = 0; i < s->n; i++) {
+      naA[i] = 0;
+      naB[i] = 0;
+    } 
 
     S[groupCombination] = ALLOCMEMORY(NULL, NULL, double*, s->n);
 
     for(i=0; i < s->n; i++) {
-      S[groupCombination][i] = ALLOCMEMORY(NULL, NULL, double, 5);
-      memset(S[groupCombination][i], 0, sizeof(double)*5);
+      S[groupCombination][i] = ALLOCMEMORY(NULL, NULL, double, 6);
+      memset(S[groupCombination][i], 0, sizeof(double)*6);
     }
 
     for(i=0; i < s->n; i++) {
       s1 = 0;
-      for(int j=0;j<noA;j++)
-        s1+=s->value[i][grpA[j]];
-      s1/=noA;
+      for(int j=0;j<noA;j++){
+        if (s->value[i][grpA[j]]==s->value[i][grpA[j]])
+        {
+          s1+=s->value[i][grpA[j]];
+        }else{
+          naA[i]++;
+        }
+      }
+      s1/=(noA-naA[i]);
 
       s2 = 0;
-      for(j=0; j < noB; j++)
-        s2+=s->value[i][grpB[j]];
-      s2/=noB;
-
+      for(j=0; j < noB; j++){
+        if (s->value[i][grpB[j]]==s->value[i][grpB[j]])
+        {
+          s2+=s->value[i][grpB[j]];
+        }else{
+          naB[i]++;
+        }
+      }
+      s2/=(noB-naB[i]);
+      // fprintf(stderr,"%d,%d,%d,%d,\n",noB,naB,noA,naA);
       if(i==0) {
-
-        S[groupCombination][i][1]=s1-s2;
-        S[groupCombination][i][0]=fabs(S[groupCombination][i][1]);
-        if(s1-s2==0) {
+        if (noB==naB[i] || noA==naA[i])
+        {
+          S[groupCombination][i][1]=0;
+          S[groupCombination][i][0]=0;
+          S[groupCombination][i][5]=0;
           S[groupCombination][i][2] = 0;
-
-        }
-        else{
-          if(s1-s2>0)
-            S[groupCombination][i][2] = 1;
-          else
-            S[groupCombination][i][2] = -1;
-        }
-        if (fabs(s1-s2)>=mindiff)
-        {
-          S[groupCombination][i][3] = 1;
-        } else {
           S[groupCombination][i][3] = 0;
-        }
-
-        if (fabs(s1-s2)>=mindiff2)
-        {
-          S[groupCombination][i][4] = 1;
-        } else {
           S[groupCombination][i][4] = 0;
         }
-        
+        else{
+          S[groupCombination][i][1]=s1-s2;
+          S[groupCombination][i][0]=fabs(S[groupCombination][i][1]);
+          S[groupCombination][i][5]=1;
+
+          if(s1-s2==0) {
+            S[groupCombination][i][2] = 0;
+          }
+          else{
+            if(s1-s2>0)
+              S[groupCombination][i][2] = 1;
+            else
+              S[groupCombination][i][2] = -1;
+          }
+          if (fabs(s1-s2)>=mindiff)
+          {
+            S[groupCombination][i][3] = 1;
+          } else {
+            S[groupCombination][i][3] = 0;
+          }
+
+          if (fabs(s1-s2)>=mindiff2)
+          {
+            S[groupCombination][i][4] = 1;
+          } else {
+            S[groupCombination][i][4] = 0;
+          }
+        }
 
       } else {
-
-        S[groupCombination][i][1]=S[groupCombination][i-1][1]+s1-s2;
-        S[groupCombination][i][0]=fabs(S[groupCombination][i][1]);
-        if(s1-s2==0)
-          S[groupCombination][i][2] = 0;
+        if (noB==naB[i] || noA==naA[i]){
+          S[groupCombination][i][1]=S[groupCombination][i-1][1]+0;
+          S[groupCombination][i][0]=fabs(S[groupCombination][i][1]);
+          S[groupCombination][i][5]=S[groupCombination][i-1][5]+0;
+          S[groupCombination][i][2] = S[groupCombination][i-1][2]+0;
+          S[groupCombination][i][3] = S[groupCombination][i-1][3]+0;
+          S[groupCombination][i][4] = S[groupCombination][i-1][4]+0;
+        }
         else{
-          if(s1-s2>0)
-            S[groupCombination][i][2] = S[groupCombination][i-1][2]+1;
-          else
-            S[groupCombination][i][2] = S[groupCombination][i-1][2]-1;
-        }   
+          S[groupCombination][i][1]=S[groupCombination][i-1][1]+s1-s2;
+          S[groupCombination][i][0]=fabs(S[groupCombination][i][1]);
+          S[groupCombination][i][5]=S[groupCombination][i-1][5]+1;
+          if(s1-s2==0)
+            S[groupCombination][i][2] = 0;
+          else{
+            if(s1-s2>0)
+              S[groupCombination][i][2] = S[groupCombination][i-1][2]+1;
+            else
+              S[groupCombination][i][2] = S[groupCombination][i-1][2]-1;
+          }   
 
-        if (fabs(s1-s2)>=mindiff)
-        {
-          S[groupCombination][i][3] = S[groupCombination][i-1][3]+1;
-        } else {
-          S[groupCombination][i][3] = S[groupCombination][i-1][3];
-        } 
+          if (fabs(s1-s2)>=mindiff)
+          {
+            S[groupCombination][i][3] = S[groupCombination][i-1][3]+1;
+          } else {
+            S[groupCombination][i][3] = S[groupCombination][i-1][3];
+          } 
 
-        if (fabs(s1-s2)>=mindiff2)
-        {
-          S[groupCombination][i][4] = S[groupCombination][i-1][4]+1;
-        } else {
-          S[groupCombination][i][4] = S[groupCombination][i-1][4];
-        } 
-
+          if (fabs(s1-s2)>=mindiff2)
+          {
+            S[groupCombination][i][4] = S[groupCombination][i-1][4]+1;
+          } else {
+            S[groupCombination][i][4] = S[groupCombination][i-1][4];
+          } 
+        }
       }
     }
   }
@@ -808,12 +887,25 @@ calcSigCpGs(double **S,int s, int t) {
 }
 
 double 
-calcSigCpGs2(double **S,int s, int t) {
+calcSigCpGs2(int omitNA, double **S,int s, int t) {
   double sigCpGs; 
-  if(s==0)
-    sigCpGs = S[t][4]/(t-s+1);
-  else
-    sigCpGs = (S[t][4]-S[s-1][4])/(t-s+1);
+  if(omitNA>0){
+    if(s==0)
+      sigCpGs = S[t][4]/S[t][5];
+    else
+      sigCpGs = (S[t][4]-S[s-1][4])/(S[t][5]-S[s-1][5]);
+    if ((s==0)&&(S[t][5]==0))
+      sigCpGs = 1;//fprintf(stderr,"s==0,nonNA");
+    if ((s>0)&&((S[t][5]-S[s-1][5])==0))
+      sigCpGs = 1;//fprintf(stderr,"s==0,nonNA");
+    // sigCpGs = 1;
+  }
+  else{
+    if(s==0)
+      sigCpGs = S[t][4]/(t-s+1);
+    else
+      sigCpGs = (S[t][4]-S[s-1][4])/(t-s+1);
+  }
   return sigCpGs;
 }
 
@@ -825,14 +917,24 @@ calcSigCpGs2(double **S,int s, int t) {
  */
 
 double 
-calcSingleTrendAbs(double **S,int s, int t) {
+calcSingleTrendAbs(int omitNA, double **S,int s, int t) {
   double ds = s;
   double dt=t;
   double trend; 
-  if(s==0)
-    trend = fabs(S[t][2])/dt; // should divided by (dt+1)???
-  else
-    trend = fabs(S[t][2]-S[s-1][2])/(dt-ds+1);
+  if (omitNA>0){
+    // fprintf(stderr, "calcSingleTrendAbs\n"); 
+    if(s==0)
+      trend = fabs(S[t][2])/S[t][5];
+    else
+      trend = fabs(S[t][2]-S[s-1][2])/(S[t][5]-S[s-1][5]);
+  }
+  else {
+    if(s==0)
+      trend = fabs(S[t][2])/dt; // should divided by (dt+1)???
+    else
+      trend = fabs(S[t][2]-S[s-1][2])/(dt-ds+1);
+  }
+  
 
   return trend;
 }
@@ -1215,11 +1317,11 @@ clustering(int ***clusters, int *nclusters, int numberSubGroup, int **subgroupID
 
       if (nfo->minDMR2 != 1)
       {
-        if (calcSigCpGs2(S[newgn], s, t) < nfo->minDMR2)
+        if (calcSigCpGs2(nfo->omitNA, S[newgn], s, t) < nfo->minDMR2)
         {
-          // fprintf(stderr, "A+.\n");
+          // fprintf(stderr, "A+.%f,%f,%f,%f,%f\n",calcSigCpGs2(nfo->omitNA, S[newgn], s, t),S[newgn][s][4],S[newgn][t][4],S[newgn][s][5],S[newgn][t][5]);
           (*clusters)[(*nclusters) - 1][g] -= 1;
-        }
+        }//else{fprintf(stderr, "A=.%f,%f,%f,%f,%f\n",calcSigCpGs2(nfo->omitNA, S[newgn], s, t),S[newgn][s][4],S[newgn][t][5],S[newgn][s][5],S[newgn][t][5]);}
       } else {
         if (calcSigCpGs(S[newgn], s, t) < nfo->minDMR)
         {
@@ -1248,7 +1350,7 @@ clustering(int ***clusters, int *nclusters, int numberSubGroup, int **subgroupID
 
       if (nfo->minDMR2 != 1)
       {
-        if (calcSigCpGs2(S[newgn], s, t) < nfo->minDMR2)
+        if (calcSigCpGs2(nfo->omitNA, S[newgn], s, t) < nfo->minDMR2)
         {
           // fprintf(stderr, "B+.\n");
           (*clusters)[(*nclusters) - 1][g] += 1;
@@ -1459,7 +1561,7 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
             //check the left side of the maximum interval with ks
             n=a; m=ab_tmp[0]-1;
             if(ab_tmp[0] > 0 && m-n+1 >= nfo->mincpgs 
-                && calcSingleTrendAbs(XS[gn],a,ab_tmp[0]-1) > nfo->trend 
+                && calcSingleTrendAbs(nfo->omitNA, XS[gn],a,ab_tmp[0]-1) > nfo->trend 
                 && noValley(XS[gn], a, ab_tmp[0]-1, nfo)) {
 
               kstest(seg, a, ab_tmp[0]-1, 0, 1, 1, ks1_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
@@ -1468,7 +1570,7 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
             //check the maximum interval interval with ks
             n=ab_tmp[0];m=ab_tmp[1];
             if(m-n+1 >= nfo->mincpgs 
-                && calcSingleTrendAbs(XS[gn],ab_tmp[0],ab_tmp[1]) > nfo->trend 
+                && calcSingleTrendAbs(nfo->omitNA, XS[gn],ab_tmp[0],ab_tmp[1]) > nfo->trend 
                 && noValley(XS[gn], ab_tmp[0], ab_tmp[1], nfo) ) {
 
               kstest(seg, ab_tmp[0], ab_tmp[1], 0, 1, 1, ks2_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
@@ -1477,7 +1579,7 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
             //check the right side of the maximum interval with ks
             n=ab_tmp[1]+1;m=b;
             if(m-n+1 >= nfo->mincpgs 
-                && calcSingleTrendAbs(XS[gn],ab_tmp[1]+1,b)> nfo->trend 
+                && calcSingleTrendAbs(nfo->omitNA, XS[gn],ab_tmp[1]+1,b)> nfo->trend 
                 && noValley(XS[gn], ab_tmp[1]+1, b, nfo)) {
 
               kstest(seg, ab_tmp[1]+1, b, 0, 1, 1, ks3_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
@@ -1506,7 +1608,7 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
           //   //check the left side of the maximum interval with ks
           //   // n=a; m=ab_tmp[0]-1;
           //   // if(ab_tmp[0] > 0 && m-n+1 >= nfo->mincpgs 
-          //   //     && calcSingleTrendAbs(XS[gn],a,ab_tmp[0]-1) > nfo->trend 
+          //   //     && calcSingleTrendAbs(nfo->omitNA, XS[gn],a,ab_tmp[0]-1) > nfo->trend 
           //   //     && noValley(XS[gn], a, ab_tmp[0]-1, nfo)) {
 
           //   //   kstest_fake(seg, a, ab_tmp[0]-1, 0, 1, 1, ks1_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
@@ -1515,7 +1617,7 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
           //   // //check the maximum interval interval with ks
           //   // n=ab_tmp[0];m=ab_tmp[1];
           //   // if(m-n+1 >= nfo->mincpgs 
-          //   //     && calcSingleTrendAbs(XS[gn],ab_tmp[0],ab_tmp[1]) > nfo->trend 
+          //   //     && calcSingleTrendAbs(nfo->omitNA, XS[gn],ab_tmp[0],ab_tmp[1]) > nfo->trend 
           //   //     && noValley(XS[gn], ab_tmp[0], ab_tmp[1], nfo) ) {
 
           //   //   kstest_fake(seg, ab_tmp[0], ab_tmp[1], 0, 1, 1, ks2_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
@@ -1524,7 +1626,7 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
           //   // //check the right side of the maximum interval with ks
           //   // n=ab_tmp[1]+1;m=b;
           //   // if(m-n+1 >= nfo->mincpgs 
-          //   //     && calcSingleTrendAbs(XS[gn],ab_tmp[1]+1,b)> nfo->trend 
+          //   //     && calcSingleTrendAbs(nfo->omitNA, XS[gn],ab_tmp[1]+1,b)> nfo->trend 
           //   //     && noValley(XS[gn], ab_tmp[1]+1, b, nfo)) {
 
           //   //   kstest_fake(seg, ab_tmp[1]+1, b, 0, 1, 1, ks3_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
@@ -1580,7 +1682,7 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
               //check the left side of the maximum interval with ks
               n=a; m=ab[0]-1;
               if(ab[0] > 0 && m-n+1 >= nfo->mincpgs 
-                  && calcSingleTrendAbs(XS[gn],a,ab[0]-1) > nfo->trend 
+                  && calcSingleTrendAbs(nfo->omitNA, XS[gn],a,ab[0]-1) > nfo->trend 
                   && noValley(XS[gn], a, ab[0]-1, nfo)) {
 
                 kstest(seg, a, ab[0]-1, 0, 1, 1, ks1_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
@@ -1589,7 +1691,7 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
               //check the maximum interval interval with ks
               n=ab[0];m=ab[1];
               if(m-n+1 >= nfo->mincpgs 
-                  && calcSingleTrendAbs(XS[gn],ab[0],ab[1]) > nfo->trend 
+                  && calcSingleTrendAbs(nfo->omitNA, XS[gn],ab[0],ab[1]) > nfo->trend 
                   && noValley(XS[gn], ab[0], ab[1], nfo) ) {
 
                 kstest(seg, ab[0], ab[1], 0, 1, 1, ks2_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
@@ -1598,7 +1700,7 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
               //check the right side of the maximum interval with ks
               n=ab[1]+1;m=b;
               if(m-n+1 >= nfo->mincpgs 
-                  && calcSingleTrendAbs(XS[gn],ab[1]+1,b)> nfo->trend 
+                  && calcSingleTrendAbs(nfo->omitNA, XS[gn],ab[1]+1,b)> nfo->trend 
                   && noValley(XS[gn], ab[1]+1, b, nfo)) {
                 kstest(seg, ab[1]+1, b, 0, 1, 1, ks3_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
               }
@@ -1745,9 +1847,9 @@ segment_pSTKopt(segment_t *seg, segment_t *breaks, int *nbreaks, double ***XS,
           // for(int gn=0;gn<groupNumber;gn++){
           //   double ks4tmp[] = {2,0,2};
           //   kstest(seg, a, b, 0, 1, 1, ks4tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
-          //   // calcSingleTrendAbs(XS[gn],a,ab[0]-1) > nfo->trend 
+          //   // calcSingleTrendAbs(nfo->omitNA, XS[gn],a,ab[0]-1) > nfo->trend 
           //   //   && noValley(XS[gn], a, ab[0]-1, nfo)
-          //   fprintf(stderr,"KS. a%d,b%d,ks%f\tgroup%d,ks%f,trend%f,novally%d\n", a, b, KS[0], gn, ks4tmp[0],calcSingleTrendAbs(XS[gn],a,b),noValley(XS[gn], a, b, nfo));
+          //   fprintf(stderr,"KS. a%d,b%d,ks%f\tgroup%d,ks%f,trend%f,novally%d\n", a, b, KS[0], gn, ks4tmp[0],calcSingleTrendAbs(nfo->omitNA, XS[gn],a,b),noValley(XS[gn], a, b, nfo));
           // }
           // assert((a!=15)||(b!=26));
           
@@ -1829,7 +1931,7 @@ segmenterSTK(segment_t *seg, segment_t *globalbreaks, int *nglobal, double ***XS
             continue;
           }
           // end a filter step here
-          trend[gn] = calcSingleTrendAbs(XS[gn], n, m);
+          trend[gn] = calcSingleTrendAbs(nfo->omitNA, XS[gn], n, m);
           if(m-n+1 >= nfo->mincpgs && trend[gn] > nfo->trend && noValley(XS[gn], n, m, nfo)) { 
             kstest(seg, n, m, 0, 1, 1, ks_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
             if (ks_tmp[0]<ks[0])
@@ -1864,7 +1966,7 @@ segmenterSTK(segment_t *seg, segment_t *globalbreaks, int *nglobal, double ***XS
       n = max->stop+1;
       m = b;
       if(n<=m) {
-        // trend = calcSingleTrendAbs(XS,n,m);
+        // trend = calcSingleTrendAbs(nfo->omitNA, XS,n,m);
         // double ks[] = {2,0,2};
         // if(m-n+1 >= nfo->mincpgs && trend > nfo->trend && noValley(XS, n, m, nfo)) { 
         //   kstest(seg, n, m, 0, 1, 1, ks, groupID, groupSize, groupNumber, nfo);
@@ -1880,7 +1982,7 @@ segmenterSTK(segment_t *seg, segment_t *globalbreaks, int *nglobal, double ***XS
           }
           // end a filter step here
 
-          trend[gn] = calcSingleTrendAbs(XS[gn], n, m);
+          trend[gn] = calcSingleTrendAbs(nfo->omitNA, XS[gn], n, m);
           if(m-n+1 >= nfo->mincpgs && trend[gn] > nfo->trend && noValley(XS[gn], n, m, nfo)) { 
             kstest(seg, n, m, 0, 1, 1, ks_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
             if (ks_tmp[0]<ks[0])
@@ -2018,7 +2120,7 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
           }
           // end a filter step here
 
-          trend = calcSingleTrendAbs(XS[gn],tmp->start,tmp->stop);
+          trend = calcSingleTrendAbs(nfo->omitNA, XS[gn],tmp->start,tmp->stop);
           if(tmp->stop-tmp->start + 1 >= nfo->mincpgs && trend>nfo->trend 
               && noValley(XS[gn], tmp->start, tmp->stop, nfo)) {
 
@@ -2124,7 +2226,7 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
 
   if(tmp != NULL) {
     // fprintf(stderr,"NULL\n");
-    // trend = calcSingleTrendAbs(XS,tmp->start,tmp->stop);
+    // trend = calcSingleTrendAbs(nfo->omitNA, XS,tmp->start,tmp->stop);
     // double ks[] = {2,0,2};
 
     // if(tmp->stop-tmp->start + 1 >= nfo->mincpgs && trend > nfo->trend 
@@ -2143,7 +2245,7 @@ output(segment_t *seg, segment_t *breaks, int nglobal, double ***XS,
       }
       // end a filter step here
       
-      trend = calcSingleTrendAbs(XS[gn],tmp->start,tmp->stop);
+      trend = calcSingleTrendAbs(nfo->omitNA, XS[gn],tmp->start,tmp->stop);
       if(tmp->stop-tmp->start + 1 >= nfo->mincpgs && trend>nfo->trend 
           && noValley(XS[gn], tmp->start, tmp->stop, nfo)) {
 
@@ -2263,7 +2365,7 @@ segmentation(char **chr, int *pos, double **value, int n,
       continue;
     }
     // end a filter step here
-    trend[gn] = calcSingleTrendAbs(S[gn], 0, n-1);
+    trend[gn] = calcSingleTrendAbs(nfo->omitNA, S[gn], 0, n-1);
     novalley[gn] = noValley(S[gn], 0, n-1, nfo);
     if(seg->n-1 >= nfo->mincpgs && trend[gn] > nfo->trend && novalley[gn]) { // should be seg->n >= mincpg???
       kstest(seg , 0, n-1, 0, 1, 1, ks_tmp, groupID[0][gn], groupSize[0][gn], groupID[1][gn], groupSize[1][gn], nfo);
@@ -3017,6 +3119,9 @@ int main(int argc, char** argv) {
   manopt(&optset, REQUINTOPT, 0, 'O', "outputImputed", 
       "output the matrix with imputed values: 0: no, 1: yes", "<n>", &clusteringconstraint, &nfo.outputImputed);
 
+  manopt(&optset, REQUINTOPT, 0, 'J', "omitNA", 
+      "omit NAs: 0: no, 1: yes", "<n>", &clusteringconstraint, &nfo.omitNA);
+
 
   args = manopt_getopts(&optset, argc, argv);
   if(args->noofvalues == 1) {
@@ -3693,7 +3798,13 @@ int main(int argc, char** argv) {
         int nan = checkSetNAN(csv, values);
         if(nan>0) {
         // fprintf(stderr,"#call fillNAN for %d groups\n", nfo.groups);
+          if (nfo.omitNA>0)
+          {
+            nan = 0;
+          }
+          else{
             nan = fillNAN(values, subgroupID, subgroupSize, nfo.groups, &nfo);
+          }
     //      fprintf(stderr,"#...done\n");
         }
 	else{
