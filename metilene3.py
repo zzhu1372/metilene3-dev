@@ -1,12 +1,14 @@
+#!/usr/bin/env python3
 import os
 import sys
 import time
 import argparse
+import numpy as np
 import pandas as pd
 import warnings
 warnings.filterwarnings('ignore')
 
-metilene_ver = 3.0
+VERSION = 3.0
 
 ###################################################################################################
 # Input
@@ -26,6 +28,7 @@ parser.add_argument('-M', "--maxdist", type=int, default=300, help='(optional) m
 parser.add_argument('-m', "--minCpGs", type=int, default=10, help='(optional) minimum CpGs',)
 parser.add_argument('-d', "--minMethDiff", type=float, default=0.1, help='(optional) minimum mean methylation difference',)
 parser.add_argument('-r', "--minDMR", type=int, default=5, help='(optional) minimum CpGs with minimum mean methylation difference in a segment',)
+parser.add_argument('-X', "--minNonNA", type=int, default=1, help='(optional) minimum samples with non-NA values in each group',)
 parser.add_argument('-v', "--valley", type=float, default=0.7, help='(optional) a cutoff for the difference between global and regional methylation differences',)
 parser.add_argument('-D', "--minMethDiffHigh", type=float, default=0.5, help='(optional) minimum mean methylation difference for DMTree and GSEA, similar to -d but a higher value will be recommanded to reduce the number of false positive DMRs',)
 parser.add_argument('-u', "--clusteringRatio", type=float, default=0.5, help='(optional) maximum ratio of CpGs with minimum difference in a cluster',)
@@ -37,7 +40,8 @@ parser.add_argument('-plot', "--visualization", type=lambda x: (str(x).lower() =
 parser.add_argument('-anno', "--annotation", help='(optional) hg19 or hg38, use ChIPseeker to annotate the DMRs',)
 parser.add_argument('-refs', "--refSeq", help='(optional) reference genome, for sequence annotation',)
 parser.add_argument('-gsea', "--genesets", help='(optional) geneset gmt file for GSEA',)
-parser.add_argument('-wsup', "--withSupervised", type=lambda x: (str(x).lower() == 'true'), default=True)
+parser.add_argument('-wsup', "--withSupervised", help='(optional) run supervised mode on clusters after unsupervised mode', type=lambda x: (str(x).lower() == 'true'), default=True)
+parser.add_argument('--version', action='version', version=f'%(prog)s {VERSION}', help='Get the version of metilene3',)
 
 # hidden
 parser.add_argument('-sk', "--skipMetilene", type=lambda x: (str(x).lower() == 'true'), default=False, help=argparse.SUPPRESS)
@@ -71,7 +75,16 @@ def preprocess(args, headerfile, ifsup, grpinfo=None):
         cols.to_csv(headerfile, sep='\t', index=False)
         
     else:
+        cols = pd.read_table(args.input, nrows=0)
+        newcols = list(cols.columns)
+        
         grp = pd.read_table(grpinfo, index_col='ID')['Group'].astype(str)
+        try:
+            grp = grp.loc[newcols[2:]]
+        except:
+            print('ERROR: group information table is not matched!')
+            return
+
         grpid = {}
         j = 0
         for i in sorted(grp.unique()):
@@ -84,8 +97,7 @@ def preprocess(args, headerfile, ifsup, grpinfo=None):
         df_grpid.to_csv(args.output+'/group-ID.tsv', sep='\t')
         
         grpdict = grp.map(grpid).to_dict()
-        cols = pd.read_table(args.input, nrows=0)
-        newcols = list(cols.columns)
+        
         # print(newcols)
         for i in range(len(newcols))[2:]:
             newcols[i] = str(grpdict[newcols[i]])+'_Sample'+str(i-2)#+'_'+newcols[i]
@@ -127,6 +139,7 @@ def runMetilene(args, headerfile, ifsup):
                     " -M "+str(args.maxdist)+\
                     " -m "+str(args.minCpGs)+\
                     " -d "+str(args.minMethDiff)+\
+                    " -X "+str(args.minNonNA)+\
                     " -v "+str(args.valley)+\
                     
                     " -r "+str(args.minDMR)+\
@@ -147,7 +160,7 @@ def runMetilene(args, headerfile, ifsup):
                         args.output+'/'+args.input.split('/')[-1]+'.imputed')
                         
             os.system("grep \'//Imputed:\' "+\
-            args.output+'/'+args.input.split('/')[-1]+".aout|sed \"s/\/\/Imputed://\" >>" + \
+            args.output+'/'+args.input.split('/')[-1]+r".aout|sed 's/\/\/Imputed://' >>" + \
             args.output+'/'+args.input.split('/')[-1]+'.imputed')
             
             os.system("rm "+args.output+'/'+args.input.split('/')[-1]+'.aout')
@@ -285,16 +298,10 @@ def processOutput(args, ifsup, anno='F'):
 
     # print('# of processed DMRs:',mout.shape[0])
     if anno == 'T' and args.annotation:
-        try:
-            mout = chipseeker(mout, moutPath, args.annotation)
-        except:
-            print('ERROR: Failed to annotate DMRs. Please check if you have installed R packages: ChIPseeker and annotation package for TxDb object (e.g., hg19, hg38, or mm10).')
+        mout = chipseeker(mout, moutPath, args.annotation)
 
     if anno == 'T' and args.refSeq:
-        try:
-            mout = addSeq(mout, args.refSeq)
-        except:
-            print('ERROR: Failed to annotate DMRs with the reference.')
+        mout = addSeq(mout, args.refSeq)
 
     mout.to_csv(moutPath, index=False, sep='\t')
                     
@@ -596,7 +603,7 @@ def plotClustermap(mout, cls, reportPath, sids, finalCls, cls_full):
         
     denovo_pn2 = mout[['mean','sig.comparison','sig.comparison.bin']]
     denovo_pn2['tmp'] = 0
-    c = 2**100
+    c = np.int64(2**61)
     def allrelated(x):
         if x.find('1') > -1:
             return [x,\
@@ -739,9 +746,9 @@ def DMRtable(args, finalCls, mout, unmout=None):
             table = pd.DataFrame(mout['sig.comparison'].value_counts()[:10])
             table.columns = ['#DMRs']
         else:
-            table = pd.DataFrame([dmrs['DMTree'].str.contains(('P'+i+',').replace('|','\|')).sum() for i in finalCls.columns[1:]], list(finalCls.columns[1:]))
+            table = pd.DataFrame([dmrs['DMTree'].str.contains(('P'+i+',').replace('|',r'\|')).sum() for i in finalCls.columns[1:]], list(finalCls.columns[1:]))
             table.columns = ['#DMRs_hypo_in_left']
-            table['#DMRs_hypo_in_right'] = [dmrs['DMTree'].str.contains(('N'+i+',').replace('|','\|')).sum() for i in table.index]
+            table['#DMRs_hypo_in_right'] = [dmrs['DMTree'].str.contains(('N'+i+',').replace('|',r'\|')).sum() for i in table.index]
         # print(table)
         
         def decodeSigCmp(x):
@@ -860,9 +867,9 @@ def gsea(args, finalCls, mout, unmout=None):
         uors = 'sup'
         for dmrs in dmrs_list:
             if dmrs is not None:
-                table = pd.DataFrame([dmrs['DMTree'].str.contains(('P'+i+',').replace('|','\|')).sum() for i in finalCls.columns[1:]], list(finalCls.columns[1:]))
+                table = pd.DataFrame([dmrs['DMTree'].str.contains(('P'+i+',').replace('|',r'\|')).sum() for i in finalCls.columns[1:]], list(finalCls.columns[1:]))
                 table.columns = ['#DMRs_hypo_in_left']
-                table['#DMRs_hypo_in_right'] = [dmrs['DMTree'].str.contains(('N'+i+',').replace('|','\|')).sum() for i in table.index]
+                table['#DMRs_hypo_in_right'] = [dmrs['DMTree'].str.contains(('N'+i+',').replace('|',r'\|')).sum() for i in table.index]
                 # print(table)
                 
                 table['left'] = [','.join(decodeSigCmpLR(i)['L']) for i in table.index]
@@ -873,7 +880,7 @@ def gsea(args, finalCls, mout, unmout=None):
                     j = 0
                     for i in table.index:
                         gene_sets = args.genesets
-                        gene_list = list(set(dmrs.loc[(dmrs['DMTree'].str.contains(('P'+i+',').replace('|','\|')))&(dmrs['meandiffabs']>args.minMethDiffHigh)]['SYMBOL'].dropna()))
+                        gene_list = list(set(dmrs.loc[(dmrs['DMTree'].str.contains(('P'+i+',').replace('|',r'\|')))&(dmrs['meandiffabs']>args.minMethDiffHigh)]['SYMBOL'].dropna()))
                         
                         try:
                             for gs in gene_sets.split(','):
@@ -903,7 +910,7 @@ def gsea(args, finalCls, mout, unmout=None):
                     j = 0
                     for i in table.index:
                         gene_sets = args.genesets
-                        gene_list = list(set(dmrs.loc[(dmrs['DMTree'].str.contains(('N'+i+',').replace('|','\|')))&(dmrs['meandiffabs']>args.minMethDiffHigh)]['SYMBOL'].dropna()))
+                        gene_list = list(set(dmrs.loc[(dmrs['DMTree'].str.contains(('N'+i+',').replace('|',r'\|')))&(dmrs['meandiffabs']>args.minMethDiffHigh)]['SYMBOL'].dropna()))
                         
                         try:
                             for gs in gene_sets.split(','):
@@ -948,7 +955,7 @@ def report_unsup(args, start_time, end_time, unmout, finalCls, mout):
         template_content = template_file.read()
 
     final_html = template_content.replace('<h2>Metilene Report for XXX</h2>', '<h2>Metilene Report for '+args.input.split('/')[-1]+'</h2>')
-    final_html = final_html.replace('<div>Version: XXX</div><br>', '<div>Version: '+str(metilene_ver)+'</div><br>')
+    final_html = final_html.replace('<div>Version: XXX</div><br>', '<div>Version: '+str(VERSION)+'</div><br>')
     final_html = final_html.replace('<div>Command: XXX</div><br>', '<div>Command: '+''.join([i+' ' for i in sys.argv])+'</div><br>')
     final_html = final_html.replace('<div>Parameters: XXX</div><br>', '<div>Parameters: <br>'+str(args).split('Namespace')[-1][1:-1].split(', skipMetilene')[0]+'</div><br>')
     final_html = final_html.replace('<div>Start time: XXX</div><br>', '<div>Start time: '+str(start_time)+'</div>')
@@ -984,7 +991,7 @@ def report_sup(args, start_time, end_time, mout):
         template_content = template_file.read()
 
     final_html = template_content.replace('<h2>Metilene Report for XXX</h2>', '<h2>Metilene Report for '+args.input.split('/')[-1]+'</h2>')
-    final_html = final_html.replace('<div>Version: XXX</div><br>', '<div>Version: '+str(metilene_ver)+'</div><br>')
+    final_html = final_html.replace('<div>Version: XXX</div><br>', '<div>Version: '+str(VERSION)+'</div><br>')
     final_html = final_html.replace('<div>Command: XXX</div><br>', '<div>Command: '+''.join([i+' ' for i in sys.argv])+'</div><br>')
     final_html = final_html.replace('<div>Parameters: XXX</div><br>', '<div>Parameters: <br>'+str(args).split('Namespace')[-1][1:-1].split(', skipMetilene')[0]+'</div><br>')
     final_html = final_html.replace('<div>Start time: XXX</div><br>', '<div>Start time: '+str(start_time)+'</div>')
@@ -1008,7 +1015,7 @@ def report_wosup(args, start_time, end_time, unmout, finalCls):
         template_content = template_file.read()
 
     final_html = template_content.replace('<h2>Metilene Report for XXX</h2>', '<h2>Metilene Report for '+args.input.split('/')[-1]+'</h2>')
-    final_html = final_html.replace('<div>Version: XXX</div><br>', '<div>Version: '+str(metilene_ver)+'</div><br>')
+    final_html = final_html.replace('<div>Version: XXX</div><br>', '<div>Version: '+str(VERSION)+'</div><br>')
     final_html = final_html.replace('<div>Command: XXX</div><br>', '<div>Command: '+''.join([i+' ' for i in sys.argv])+'</div><br>')
     final_html = final_html.replace('<div>Parameters: XXX</div><br>', '<div>Parameters: <br>'+str(args).split('Namespace')[-1][1:-1].split(', skipMetilene')[0]+'</div><br>')
     final_html = final_html.replace('<div>Start time: XXX</div><br>', '<div>Start time: '+str(start_time)+'</div>')
@@ -1039,7 +1046,7 @@ def report_nocls(args, start_time, end_time, unmout):
         template_content = template_file.read()
 
     final_html = template_content.replace('<h2>Metilene Report for XXX</h2>', '<h2>Metilene Report for '+args.input.split('/')[-1]+'</h2>')
-    final_html = final_html.replace('<div>Version: XXX</div><br>', '<div>Version: '+str(metilene_ver)+'</div><br>')
+    final_html = final_html.replace('<div>Version: XXX</div><br>', '<div>Version: '+str(VERSION)+'</div><br>')
     final_html = final_html.replace('<div>Command: XXX</div><br>', '<div>Command: '+''.join([i+' ' for i in sys.argv])+'</div><br>')
     final_html = final_html.replace('<div>Parameters: XXX</div><br>', '<div>Parameters: <br>'+str(args).split('Namespace')[-1][1:-1].split(', skipMetilene')[0]+'</div><br>')
     final_html = final_html.replace('<div>Start time: XXX</div><br>', '<div>Start time: '+str(start_time)+'</div>')
@@ -1096,8 +1103,8 @@ def checkParams(args):
 
 def main():
     start_time = time.ctime()
-    print(start_time,": Started.")
     args = parser.parse_args()
+    print(start_time,": Started.")
     # print(args)
     msg = checkParams(args)
     if msg:
