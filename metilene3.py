@@ -47,6 +47,7 @@ parser.add_argument('--version', action='version', version=f'%(prog)s {VERSION}'
 parser.add_argument('-sk', "--skipMetilene", type=lambda x: (str(x).lower() == 'true'), default=False, help=argparse.SUPPRESS)
 parser.add_argument('-kt', "--keeptmp", type=lambda x: (str(x).lower() == 'true'), default=False, help=argparse.SUPPRESS)
 parser.add_argument('-n0', "--minN0", type=int, default=2, help=argparse.SUPPRESS)
+parser.add_argument('-J', "--omitNA", type=lambda x: (str(x).lower() == 'true'), default=False, help=argparse.SUPPRESS)
 
 
 
@@ -111,6 +112,26 @@ def runMetilene(args, headerfile, ifsup):
     # print(os.path.realpath(__file__))
     if ifsup=='unsup':
         os.system(os.path.realpath(__file__).replace('metilene3.py','metilene')+\
+                    " -J "+str(args.omitNA*1)+\
+                    " -t "+str(args.threads)+\
+                    " -s "+str(args.seed)+\
+                    " -p "+str(args.verbose*1)+\
+                    
+                    " -M "+str(args.maxdist)+\
+                    " -m "+str(args.minCpGs)+\
+                    " -d "+str(args.minMethDiffHigh)+\
+                    " -v "+str(args.valley)+\
+                    
+                    " -r "+str(args.minDMR)+\
+                    " -w "+str(args.minMethDiffHigh)+\
+                    " -e "+str(args.clusteringRatio)+\
+                    " -q "+str(args.minMethDiffHigh)+\
+                    
+                    " -H "+headerfile+\
+                    " -l 1 "+args.input+" > "+\
+                    args.output+'/DMRs-unsupervised.tsv' )
+        print(os.path.realpath(__file__).replace('metilene3.py','metilene')+\
+                    " -J "+str(args.omitNA*1)+\
                     " -t "+str(args.threads)+\
                     " -s "+str(args.seed)+\
                     " -p "+str(args.verbose*1)+\
@@ -131,6 +152,7 @@ def runMetilene(args, headerfile, ifsup):
 
     else:
         os.system(os.path.realpath(__file__).replace('metilene3.py','metilene')+\
+                    " -J "+str(args.omitNA*1)+\
                     " -t "+str(args.threads)+\
                     " -s "+str(args.seed)+\
                     " -p "+str(args.verbose*1)+\
