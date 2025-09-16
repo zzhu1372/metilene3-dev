@@ -107,6 +107,7 @@ typedef struct{
 
   int clustering;// newcodes
   int outputImputed;// newcodes
+  int omitNA;// newcodes
 
   //only used for threaded segmentation
   char **chr;
