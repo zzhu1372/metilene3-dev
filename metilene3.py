@@ -574,11 +574,15 @@ def plotClustermap(mout, cls, reportPath, sids, finalCls, cls_full):
     dmrmean_m = pd.DataFrame(dmrmean_m)
     dmrmean_m = dmrmean_m.astype(float).T
     dmrmean_m.index = sids
-    pca = PCA(n_components=2)
-    X = pd.DataFrame(pca.fit_transform(np.array(dmrmean_m)))
-    X.index = dmrmean_m.index
-    X.to_csv(reportPath+'PCA.tsv', sep='\t')
-    pd.DataFrame(pca.explained_variance_ratio_).to_csv(reportPath+'PCA_ratio.tsv', sep='\t')
+
+    try:
+        pca = PCA(n_components=2)
+        X = pd.DataFrame(pca.fit_transform(np.array(dmrmean_m)))
+        X.index = dmrmean_m.index
+        X.to_csv(reportPath+'PCA.tsv', sep='\t')
+        pd.DataFrame(pca.explained_variance_ratio_).to_csv(reportPath+'PCA_ratio.tsv', sep='\t')
+    except:
+        print('skipping PCA.')
     # X['k'] = X[0]-X[0].min()
     # X['k'] = X['k']/X['k'].max()
     # dmrcluster_m[k] = dmrcluster_m.index.map(X['k'])
@@ -687,17 +691,20 @@ def plotClustermap(mout, cls, reportPath, sids, finalCls, cls_full):
         plt.savefig(reportPath+'heatmap.jpg', bbox_inches='tight')
         plt.savefig(reportPath+'heatmap.pdf', bbox_inches='tight')
 
-    fig, ax0 = plt.subplots(figsize=(3, 3))
-    X['grp'] = X.index.map(cmap)
-    # print(X)
-    sns.scatterplot(x=X[0],y=X[1],c=X['grp'],ax=ax0,s=30)
+    try:
+        fig, ax0 = plt.subplots(figsize=(3, 3))
+        X['grp'] = X.index.map(cmap)
+        # print(X)
+        sns.scatterplot(x=X[0],y=X[1],c=X['grp'],ax=ax0,s=30)
     
-    label_color_dict = clsCD.copy()
-    legend_handles = [Patch(color=color, label=label) for label, color in label_color_dict.items()]
-    ax0.legend(handles=legend_handles, ncol=1, )
-#    ax0.axis('off')
-    plt.savefig(reportPath+'PCA.jpg', bbox_inches='tight')
-    plt.savefig(reportPath+'PCA.pdf', bbox_inches='tight')
+        label_color_dict = clsCD.copy()
+        legend_handles = [Patch(color=color, label=label) for label, color in label_color_dict.items()]
+        ax0.legend(handles=legend_handles, ncol=1, )
+    #    ax0.axis('off')
+        plt.savefig(reportPath+'PCA.jpg', bbox_inches='tight')
+        plt.savefig(reportPath+'PCA.pdf', bbox_inches='tight')
+    except:
+        pass#print('skipping PCA.')
 
     return cmap
 
